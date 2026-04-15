@@ -4,11 +4,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.ConfirmEmail;
 using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Logout;
 using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.RefreshAccessToken;
 using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Register;
+using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.ResendConfirmEmail;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login;
 using Movie_StructureCode.Presentation.Abstractions;
+using System.Security.Claims;
 
 namespace Movie_StructureCode.Presentation.APIs.Auth
 {
@@ -26,7 +30,23 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             group.MapPost("/register", RegisterAsync)
                 .WithName("Register")
                 .WithSummary("Đăng ký tài khoản mới (username, email, password, re-password)")
-                .Produces<Guid>(StatusCodes.Status201Created)
+                .Produces<string>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .AllowAnonymous();
+
+            // ── CONFIRM EMAIL ────────────────────────────────────────────
+            group.MapPost("/confirm-email", ConfirmEmailAsync)
+                .WithName("ConfirmEmail")
+                .WithSummary("Xác minh email tài khoản")
+                .Produces<string>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .AllowAnonymous();
+
+            // ── RESEND CONFIRM EMAIL ─────────────────────────────────────
+            group.MapPost("/resend-confirm-email", ResendConfirmEmailAsync)
+                .WithName("ResendConfirmEmail")
+                .WithSummary("Gửi lại email xác thực")
+                .Produces<string>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .AllowAnonymous();
 
@@ -44,17 +64,18 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
                 .WithName("RefreshAccessToken")
                 .WithSummary("Cấp access token mới từ refresh token")
                 .Produces<RefreshAccessTokenResponse>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
                 .AllowAnonymous();
 
             // ── LOGOUT ───────────────────────────────────────────────────
             group.MapPost("/logout", LogoutAsync)
                 .WithName("Logout")
-                .WithSummary("Đăng xuất (revoke refresh tokens)")
+                .WithSummary("Đăng xuất (xóa refresh token và session khỏi Redis)")
                 .Produces(StatusCodes.Status204NoContent)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
-                .ProducesProblem(StatusCodes.Status401Unauthorized);
+                .RequireAuthorization();
         }
 
         // ── HANDLERS ─────────────────────────────────────────────────────
@@ -72,7 +93,32 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             var result = await sender.Send(command);
 
             return result.IsSuccess
-                ? Results.Created($"/api/v1/auth/profile/{result.Value}", new { userId = result.Value })
+                ? Results.Ok(new { message = result.Value })
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> ConfirmEmailAsync(
+            ISender sender,
+            [FromQuery] Guid userId,
+            [FromQuery] string token)
+        {
+            var command = new ConfirmEmail.Command(userId, token);
+            var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(new { message = result.Value })
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> ResendConfirmEmailAsync(
+            ISender sender,
+            [FromBody] ResendConfirmEmailRequest request)
+        {
+            var command = new ResendConfirmEmail.Command(request.Email);
+            var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(new { message = result.Value })
                 : HandlerFailure(result);
         }
 
@@ -90,21 +136,55 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
 
         private static async Task<IResult> RefreshAccessTokenAsync(
             ISender sender,
-            [FromBody] RefreshTokenRequest request)
+            HttpContext httpContext)
         {
-            var command = new RefreshAccessToken.Command(request.UserId, request.RefreshToken);
+            var refreshToken = httpContext.Request.Cookies["refreshToken"] ?? string.Empty;
+
+            if(string.IsNullOrEmpty(refreshToken))
+                return Results.Unauthorized();
+
+            var command = new RefreshAccessToken.Command(refreshToken);
+
             var result = await sender.Send(command);
 
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
+            if (result.IsFailure)
+                return HandlerFailure(result);
+
+            httpContext.Response.Cookies.Append("refreshToken", result.Value.refreshTokenNew, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = result.Value.refreshTokenExpires
+            });
+
+            return Results.Ok(new
+            {
+                accessToken = result.Value.AccessToken,
+                accessTokenExpiresAt = result.Value.AccessTokenExpiresAt
+            });
         }
 
         private static async Task<IResult> LogoutAsync(
             ISender sender,
-            [FromBody] LogoutRequest request)
+            HttpContext httpContext)
         {
-            var command = new Logout.Command(request.UserId);
+            var user = httpContext.User;
+
+            if (user == null || !user.Identity?.IsAuthenticated == true)
+                return Results.Unauthorized();
+
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var jti = user.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(jti))
+                return Results.Unauthorized();
+
+
+            var command = new Logout.Command(
+               Guid.Parse(userId),
+               jti
+           );
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -125,6 +205,12 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
         string ConfirmPassword);
 
     /// <summary>
+    /// Resend Confirm Email request - gửi lại email xác thực
+    /// </summary>
+    public sealed record ResendConfirmEmailRequest(
+        string Email);
+
+    /// <summary>
     /// Login request - đăng nhập bằng username hoặc email
     /// </summary>
     public sealed record LoginRequest(
@@ -135,12 +221,11 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
     /// Refresh token request - cấp access token mới
     /// </summary>
     public sealed record RefreshTokenRequest(
-        Guid UserId,
         string RefreshToken);
 
     /// <summary>
     /// Logout request - đăng xuất
+    /// Note: Access token được lấy từ Authorization header, không cần pass trong body
     /// </summary>
-    public sealed record LogoutRequest(
-        Guid UserId);
+    public sealed record LogoutRequest;
 }

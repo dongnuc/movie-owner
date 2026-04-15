@@ -12,6 +12,7 @@ namespace Movie_StructureCode.Application.DependencyInjection.Extensions
         => services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssembly(typeof(AssemblyReference).Assembly))
             .AddTransient(typeof(IPipelineBehavior<,>),typeof(ValidationPipelineBehavior<,>))
+            .AddTransient(typeof(IPipelineBehavior<,>),typeof(CachingBehavior<,>))
             //.AddTransient(typeof(IPipelineBehavior<,>),typeof(PerformancePipelineBehavior<,>));
             //.AddTransient(typeof(IPipelineBehavior<,>),typeof(ValidationPipelineBehavior<,>));
             .AddValidatorsFromAssembly(Contract.AssemblyReference.Assembly, includeInternalTypes: true)

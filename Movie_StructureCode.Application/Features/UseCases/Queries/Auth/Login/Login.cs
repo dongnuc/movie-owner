@@ -18,6 +18,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login
     /// </summary>
     public sealed record LoginResponse(
         string   AccessToken,
+        DateTime AccessTokenExpiresAt,
         string   RefreshToken
     );
 }

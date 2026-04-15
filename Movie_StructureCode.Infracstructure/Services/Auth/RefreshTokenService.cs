@@ -12,10 +12,11 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
     public sealed class RefreshTokenService : IRefreshTokenService
     {
         private readonly IRepository<RefreshToken> _refreshTokenRepository;
-
-        public RefreshTokenService(IRepository<RefreshToken> refreshTokenRepository)
+        private readonly IUnitOfWork _unitOfWork;
+        public RefreshTokenService(IRepository<RefreshToken> refreshTokenRepository, IUnitOfWork unitOfWork)
         {
             _refreshTokenRepository = refreshTokenRepository;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>
@@ -66,7 +67,7 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
                 // Update LastUsedDate
                 refreshTokenEntity!.LastUsedDate = DateTime.UtcNow;
                 _refreshTokenRepository.Update(refreshTokenEntity);
-
+                await _unitOfWork.SaveChangesAsync();
                 return true;
             }
             catch
@@ -78,12 +79,12 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
         /// <summary>
         /// Revoke single refresh token (mark as revoked in database)
         /// </summary>
-        public async Task<bool> RevokeRefreshTokenAsync(Guid userId, string token)
+        public async Task<bool> RevokeRefreshTokenAsync(string token)
         {
             try
             {
                 var refreshTokens = await _refreshTokenRepository.FindAsync(
-                    rt => rt.UserId == userId && rt.Token == token,
+                    rt => rt.Token == token,
                     CancellationToken.None);
 
                 if (!refreshTokens.Any())
@@ -94,8 +95,9 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
                     return false;
 
                 refreshToken.IsRevoked = true;
+                refreshToken.IsUsed  = true;
                 _refreshTokenRepository.Update(refreshToken);
-
+                await _unitOfWork.SaveChangesAsync();
                 return true;
             }
             catch
@@ -122,6 +124,8 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
                 {
                     refreshToken.IsRevoked = true;
                     _refreshTokenRepository.Update(refreshToken);
+                    await _unitOfWork.SaveChangesAsync();
+
                 }
 
                 return true;
@@ -152,6 +156,23 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
 
                 // Return RefreshToken entity information as anonymous object or RefreshToken object
                 return refreshToken;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<RefreshToken?> GetRefreshTokenByJtiAsync(string jti)
+        {
+            try
+            {
+                var refreshTokens = await _refreshTokenRepository.FindAsync(rf => rf.JwtId == jti, CancellationToken.None);
+
+                if (!refreshTokens.Any())
+                    return null;
+
+                var result = refreshTokens.FirstOrDefault(); return result;
             }
             catch
             {

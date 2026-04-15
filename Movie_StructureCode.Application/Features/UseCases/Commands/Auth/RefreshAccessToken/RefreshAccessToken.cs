@@ -8,7 +8,6 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Refres
         /// Refresh access token command - c?p access token m?i t? refresh token
         /// </summary>
         public sealed record Command(
-            Guid UserId,
             string RefreshToken
         ) : ICommand<RefreshAccessTokenResponse>;
     }
@@ -17,6 +16,8 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Refres
     /// Response khi refresh access token thành công
     /// </summary>
     public sealed record RefreshAccessTokenResponse(
+        string refreshTokenNew,
+        DateTime refreshTokenExpires,
         string AccessToken,
         DateTime AccessTokenExpiresAt
     );

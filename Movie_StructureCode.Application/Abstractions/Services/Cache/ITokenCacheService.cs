@@ -13,7 +13,7 @@
         Task RemoveRefreshTokenAsync(string refreshToken);
 
         // ===== SESSION =====
-        Task AddUserSessionAsync(string userId, string jti);
+        Task AddUserSessionAsync(string userId, string jti, DateTime expiry);
         Task RemoveUserSessionAsync(string userId, string jti);
         Task<List<string>> GetUserSessionsAsync(string userId);
         Task RemoveAllUserSessionsAsync(string userId);

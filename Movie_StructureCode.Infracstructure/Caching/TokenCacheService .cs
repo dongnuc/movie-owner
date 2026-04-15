@@ -103,10 +103,14 @@ namespace Movie_StructureCode.Infrastructure.Caching
         // SESSION (MULTI DEVICE)
         // =========================
 
-        public async Task AddUserSessionAsync(string userId, string jti)
+        public async Task AddUserSessionAsync(string userId, string jti, DateTime expiry)
         {
+            var ttl = GetTtl(expiry);
+            if (ttl == TimeSpan.Zero) return;
+
             var key = BuildKey($"user_sessions:{userId}");
             await _redis.SetAddAsync(key, jti);
+            await _redis.KeyExpireAsync(key, ttl);
         }
 
         public async Task RemoveUserSessionAsync(string userId, string jti)

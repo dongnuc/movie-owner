@@ -18,9 +18,9 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Email
         /// Gửi email xác nhận tài khoản
         /// </summary>
         /// <param name="email">Địa chỉ email của người dùng</param>
-        /// <param name="urlUser">URL xác nhận tài khoản</param>
+        /// <param name="confirmationLink">Link xác nhận tài khoản</param>
         /// <returns>Task hoàn thành khi email được gửi</returns>
-        public Task SendMailConfirmAsync(string email, string urlUser);
+        public Task SendMailConfirmAsync(string email, string confirmationLink);
 
         /// <summary>
         /// Gửi email quên mật khẩu

@@ -36,6 +36,11 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login
                 return Result.Failure<LoginResponse>(
                     new Error("Auth.InvalidCredentials", "Invalid username/email or password."));
 
+            // Check if email is confirmed
+            if (!user.EmailConfirmed)
+                return Result.Failure<LoginResponse>(
+                    new Error("Auth.EmailNotConfirmed", "Your email has not been verified yet. Please check your email and verify your account before logging in."));
+
             // Verify password
             var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
             if (!passwordValid)
@@ -46,8 +51,8 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login
             var jti = Guid.NewGuid(); // Unique identifier for the JWT, used for refresh token tracking
             var accessToken = await _tokenService.GenerateAccessTokenAsync(user, jti.ToString());   
             var refreshToken = _tokenService.GenerateRefreshToken();
-            var accessTokenExpiresAt = DateTime.UtcNow.AddHours(1); // Adjust as needed
-            var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(3); // Adjust as needed
+            var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(2); // Adjust as needed
+            var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(1); // Adjust as needed
 
             // Save refresh token
             user.RefreshTokens ??= new List<RefreshToken>();
@@ -56,7 +61,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login
                 Token = refreshToken,
                 JwtId = jti.ToString(),
                 IsRevoked = false,
-                ExpriseDate = DateTime.UtcNow.AddDays(7),
+                ExpriseDate = refreshTokenExpiresAt,
                 UserId = user.Id
             });
 
@@ -64,10 +69,13 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login
 
             //Redis
             await _tokenCacheService.StoreAccessTokenAsync(jti.ToString(), user.Id.ToString(), accessTokenExpiresAt);
-            await _tokenCacheService.AddUserSessionAsync(user.Id.ToString(), jti.ToString());
+            await _tokenCacheService.AddUserSessionAsync(user.Id.ToString(), jti.ToString(), refreshTokenExpiresAt);
+
+            
 
             var response = new LoginResponse(
                 accessToken,
+                accessTokenExpiresAt,
                 refreshToken
             );
 

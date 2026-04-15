@@ -21,7 +21,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Auth
         /// <summary>
         /// Revoke refresh token
         /// </summary>
-        Task<bool> RevokeRefreshTokenAsync(Guid userId, string token);
+        Task<bool> RevokeRefreshTokenAsync(string token);
 
         /// <summary>
         /// Revoke all refresh tokens c?a user
@@ -33,5 +33,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Auth
         /// Returns full RefreshToken entity information (Id, JwtId, CreatedDate, LastUsedDate, ExpriseDate, IsRevoked, UserId)
         /// </summary>
         Task<RefreshToken?> GetRefreshTokenByTokenAsync(string token);
+        Task<RefreshToken?> GetRefreshTokenByJtiAsync(string jti);
+
     }
 }

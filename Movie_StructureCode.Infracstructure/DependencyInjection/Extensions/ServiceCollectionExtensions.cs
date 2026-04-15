@@ -6,6 +6,7 @@ using Movie_StructureCode.Application.Abstractions.Services.Cache;
 using Movie_StructureCode.Application.Abstractions.Services.Email;
 using Movie_StructureCode.Contract.Abstractions.Command;
 using Movie_StructureCode.Contract.Emails;
+using Movie_StructureCode.Infracstructure.Caching;
 using Movie_StructureCode.Infracstructure.Services.Auth;
 using Movie_StructureCode.Infracstructure.Services.Email;
 using Movie_StructureCode.Infrastructure.Caching;
@@ -52,6 +53,7 @@ namespace Movie_StructureCode.Infracstructure.DependencyInjection.Extensions
 
             // Token Service Composite - orchestrates token provider + refresh service
             services.AddScoped<ITokenService, TokenServiceComposite>();
+            services.AddScoped<ICacheDataService, CacheDataService>();
 
             //Bind email configuration from appsettings.json
             var emailConfig = new EmailConfiguration();

@@ -57,6 +57,23 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// ── AUTHORIZATION ───────────────────────────────────────────────────
+builder.Services.AddAuthorization();
+
+// ── CORS CONFIGURATION ──────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:4200"
+            )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 // ── INFRASTRUCTURE LAYER ─────────────────────────────────────────────
 builder.Services.AddConfigureInfrastructure(builder.Configuration);
 
@@ -71,10 +88,12 @@ builder.Host.UseSerilog();
 builder.Services.AddConfigureMediatR();
 builder.Services.AddConfigureAutoMapper();
 
-// ── MIDDLEWARE ───────────────────────────────────────────────────────
+// ── MIDDLEWARE ───────────────────────────────────────────────────────────
 builder.Services.AddTransient<ExceptionHandlingMiddleware>();
+builder.Services.AddTransient<TokenValidationMiddleware>();
 
 // ── PRESENTATION LAYER ───────────────────────────────────────────────
+builder.Services.AddConfigureApi();
 builder.Services.AddCarter();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -94,7 +113,19 @@ builder.Services.AddApiVersioning(options => options.ReportApiVersions = true)
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+// ── CORS MIDDLEWARE ─────────────────────────────────────────────────
+app.UseCors("AllowSpecificOrigins");
+// ── EXCEPTION HANDLING ──────────────────────────────────────────────
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// ── AUTHENTICATION & AUTHORIZATION ─────────────────────────────────
+app.UseAuthentication();
+app.UseAuthorization();
+
+// ── CUSTOM TOKEN VALIDATION ────────────────────────────────────────
+app.UseMiddleware<TokenValidationMiddleware>();
+
+// ── ENDPOINTS ──────────────────────────────────────────────────────
 app.MapCarter();
 
 if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging())

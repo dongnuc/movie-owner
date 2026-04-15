@@ -39,8 +39,8 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
         public async Task<bool> ValidateRefreshTokenAsync(Guid userId, string token)
             => await _refreshTokenService.ValidateRefreshTokenAsync(userId, token);
 
-        public async Task<bool> RevokeRefreshTokenAsync(Guid userId, string token)
-            => await _refreshTokenService.RevokeRefreshTokenAsync(userId, token);
+        public async Task<bool> RevokeRefreshTokenAsync( string token)
+            => await _refreshTokenService.RevokeRefreshTokenAsync( token);
 
         public async Task<bool> RevokeAllRefreshTokensAsync(Guid userId)
             => await _refreshTokenService.RevokeAllRefreshTokensAsync(userId);
@@ -50,5 +50,10 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
 
         public Task<string> GenerateAccessTokenAsync(AppUser user, string jti)
         => _tokenProvider.GenerateAccessTokenAsync(user, jti);
+
+        public Task<RefreshToken?> GetRefreshTokenByJtiAsync(string jti)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

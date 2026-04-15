@@ -5,10 +5,12 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Logout
     public static class Logout
     {
         /// <summary>
-        /// Logout command - ??ng xu?t và revoke refresh tokens
+        /// Logout command - ??ng xu?t b?ng access token
+        /// Access token s? ???c extracted t? HttpContext b?i middleware
         /// </summary>
         public sealed record Command(
-            Guid UserId
+            Guid userId,
+            string jti
         ) : ICommand<bool>;
     }
 }

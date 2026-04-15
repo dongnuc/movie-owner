@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+ï»¿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Movie_StructureCode.Application.Abstractions.Services.Auth;
@@ -10,8 +10,8 @@ using System.Text;
 namespace Movie_StructureCode.Infracstructure.Services.Auth
 {
     /// <summary>
-    /// Token provider implementation - x? lý JWT access token generation, validation, decode
-    /// Ch?u trách nhi?m: T?o JWT token, validate signature, decode token
+    /// Token provider implementation - x? lÃ½ JWT access token generation, validation, decode
+    /// Ch?u trÃ¡ch nhi?m: T?o JWT token, validate signature, decode token
     /// </summary>
     public sealed class TokenProvider : ITokenProvider
     {
@@ -26,7 +26,7 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
 
         /// <summary>
         /// Generate JWT access token v?i claims: UserId, Username, Email, Roles, Jti
-        /// Ký b?ng HS256 v?i secret key t? configuration
+        /// KÃ½ b?ng HS256 v?i secret key t? configuration
         /// </summary>
         public async Task<string> GenerateAccessTokenAsync(AppUser user,string jti)
         {
@@ -85,7 +85,7 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
                     ValidIssuer = _config["JWT:ValidIssuer"],
                     ValidateAudience = true,
                     ValidAudience = _config["JWT:ValidAudience"],
-                    ValidateLifetime = true,
+                    ValidateLifetime = false,  
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
@@ -98,23 +98,23 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
 
                 return principal;
             }
-            catch (SecurityTokenExpiredException)
+            catch (SecurityTokenExpiredException ex)
             {
                 return null;
             }
-            catch (SecurityTokenInvalidSignatureException)
+            catch (SecurityTokenInvalidSignatureException ex)
             {
                 return null;
             }
-            catch
+            catch (Exception ex)
             {
                 return null;
             }
         }
 
         /// <summary>
-        /// Decode token ?? l?y claims mà không validate lifetime
-        /// Dùng cho refresh token flow
+        /// Decode token ?? l?y claims mÃ  khÃ´ng validate lifetime
+        /// DÃ¹ng cho refresh token flow
         /// </summary>
         public ClaimsPrincipal? DecodeToken(string token)
         {
@@ -131,7 +131,7 @@ namespace Movie_StructureCode.Infracstructure.Services.Auth
                     ValidIssuer = _config["JWT:ValidIssuer"],
                     ValidateAudience = true,
                     ValidAudience = _config["JWT:ValidAudience"],
-                    ValidateLifetime = false, // Không check expiration khi decode
+                    ValidateLifetime = false, // KhÃ´ng check expiration khi decode
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 

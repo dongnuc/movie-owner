@@ -32,40 +32,65 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Refres
         {
             try
             {
-                // Get user
-                var user = await _userManager.FindByIdAsync(command.UserId.ToString());
-                if (user == null)
-                    return Result.Failure<RefreshAccessTokenResponse>(
-                        new Error("Auth.UserNotFound", "User not found."));
-
                 // Validate refresh token
                 var refreshToken = await _refreshTokenService.GetRefreshTokenByTokenAsync(command.RefreshToken);
 
                 if (refreshToken == null ||
-                    refreshToken.UserId != command.UserId ||
                     refreshToken.IsRevoked ||
+                    refreshToken.IsUsed || 
                     refreshToken.ExpriseDate <= DateTime.UtcNow)
                 {
                     return Result.Failure<RefreshAccessTokenResponse>(
                         new Error("Auth.InvalidRefreshToken", "Invalid or expired refresh token."));
                 }
 
+                // Get user
+                var user = await _userManager.FindByIdAsync(refreshToken.UserId.ToString());
+                if (user == null)
+                    return Result.Failure<RefreshAccessTokenResponse>(
+                        new Error("Auth.UserNotFound", "User not found."));
+
+                // mark used refreshToken
+                await _refreshTokenService.RevokeRefreshTokenAsync(command.RefreshToken);
+
                 // jti older
                 var oldJti = refreshToken.JwtId;
-                //redis
+                //redis remove
                 await _tokenCacheService.RemoveAccessTokenAsync(oldJti);
-                await _tokenCacheService.RemoveUserSessionAsync(command.UserId.ToString(), oldJti);
+                await _tokenCacheService.RemoveUserSessionAsync(refreshToken.UserId.ToString(), oldJti);
 
+                // generate new token 
                 var newJti = Guid.NewGuid().ToString();
 
                 // Generate new access token
-                var accessToken = await _tokenProvider.GenerateAccessTokenAsync(user,newJti);
-                var accessTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+                var accessToken = await _tokenProvider.GenerateAccessTokenAsync(user, newJti);
+                var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(2);
+                var refreshTokenNew = _refreshTokenService.GenerateRefreshToken();
+                var refreshTokenExpires = DateTime.UtcNow.AddDays(7);
+
+                var refreshTokenEntity = new RefreshToken
+                {
+                    Token = refreshTokenNew,
+                    JwtId = newJti,
+                    IsRevoked = false,
+                    ExpriseDate = refreshTokenExpires,
+                    UserId = user.Id
+                };
+                user.RefreshTokens ??= new List<RefreshToken>();
+                user.RefreshTokens.Add(refreshTokenEntity);
+
+                await _userManager.UpdateAsync(user);
 
                 var response = new RefreshAccessTokenResponse(
+                    refreshTokenNew,
+                    refreshTokenExpires,
                     accessToken,
                     accessTokenExpiresAt
                 );
+
+                // add to redis
+                await _tokenCacheService.StoreAccessTokenAsync(newJti, user.Id.ToString(),accessTokenExpiresAt);
+                await _tokenCacheService.AddUserSessionAsync(user.Id.ToString(), newJti,accessTokenExpiresAt);
 
                 return Result.Success(response);
             }

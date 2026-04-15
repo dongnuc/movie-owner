@@ -12,6 +12,6 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Regist
             string  Email,
             string  Password,
             string  ConfirmPassword
-        ) : ICommand<Guid>;
+        ) : ICommand<string>;
     }
 }

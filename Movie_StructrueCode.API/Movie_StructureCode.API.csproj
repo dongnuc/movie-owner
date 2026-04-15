@@ -39,4 +39,10 @@
 		<ProjectReference Include="..\Movie_StructureCode.Infracstructure\Movie_StructureCode.Infracstructure.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Content Update="appsettings.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
 </Project>
