@@ -29,21 +29,24 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
             group.MapGet("/", GetRoomsByTheaterAsync)
                 .WithName("GetRoomsByTheater")
                 .WithSummary("Lấy danh sách phòng theo rạp (BẮT BUỘC theaterId + tìm kiếm + phân trang)")
-                .Produces<PagedResult<RoomUserDto>>(StatusCodes.Status200OK)
+                .Produces<PagedResult<RoomListUserDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
-            group.MapGet("/{id:guid}/with-seats", GetRoomWithSeatsAsync)
-                .WithName("GetRoomWithSeats")
-                .WithSummary("Lấy thông tin phòng kèm cấu trúc ghế")
-                .Produces<RoomWithSeatsUserDto>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status404NotFound);
+            // ── QUERY (ADMIN) - MUST come before user routes ──────────────────────────────────────────────────
+            group.MapGet("/admin/{theaterId:guid}/{roomId:guid}/with-seats", GetRoomWithSeatsAdminAsync)
+                .WithName("GetRoomWithSeatsAdmin")
+                .WithSummary("Admin: Lấy chi tiết phòng kèm cấu trúc ghế (validation: room phải thuộc về theater)")
+                .Produces<RoomDetailAdminDto>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
 
             // ── QUERY (ADMIN) ──────────────────────────────────────────────────
             group.MapGet("/admin/list", GetRoomsForAdminAsync)
                 .WithName("GetRoomsForAdmin")
                 .WithSummary("Admin: Lấy danh sách phòng (BẮT BUỘC theaterId + tìm kiếm + lọc IsActive + phân trang)")
-                .Produces<PagedResult<RoomAdminDto>>(StatusCodes.Status200OK)
+                .Produces<PagedResult<RoomListAdminDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest);
 
             // ── COMMAND ──────────────────────────────────────────────────────
@@ -79,11 +82,12 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
                 : HandlerFailure(result);
         }
 
-        private static async Task<IResult> GetRoomWithSeatsAsync(
+        private static async Task<IResult> GetRoomWithSeatsAdminAsync(
             ISender sender,
-            [FromRoute] Guid id)
+            [FromRoute] Guid theaterId,
+            [FromRoute] Guid roomId)
         {
-            var query = new GetRoomWithSeats.Query(id);
+            var query = new GetRoomWithSeatsAdmin.Query(theaterId, roomId);
             var result = await sender.Send(query);
 
             return result.IsSuccess
@@ -129,7 +133,7 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
             [FromRoute] Guid id,
             [FromBody] UpdateRoomRequest request)
         {
-            var command = new UpdateRoom.Command(id, request.Name, request.IsActive);
+            var command = new UpdateRoom.Command(id, request.Name, request.TotalRow, request.TotalCol, request.IsActive);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -149,5 +153,7 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
 
     public sealed record UpdateRoomRequest(
         string Name,
+        int TotalRow,
+        int TotalCol,
         bool IsActive);
 }

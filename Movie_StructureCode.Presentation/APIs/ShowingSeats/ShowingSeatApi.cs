@@ -1,17 +1,17 @@
-using Carter;
+﻿using Carter;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.CreateShowingSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.LockSeats;
 using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.LockIndividualSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.UnlockSeats;
+using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.LockSeats;
 using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.MarkBrokenSeats;
-using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSeatMap;
+using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.UnlockSeats;
 using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat;
-using Movie_StructureCode.Contract.Abstractions.Shared;
+using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSeatCount;
+using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSeatMap;
 using Movie_StructureCode.Presentation.Abstractions;
 
 namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
@@ -29,43 +29,49 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
             //  QUERY 
             group.MapGet("/seat-map", GetSeatMapAsync)
                 .WithName("GetSeatMap")
-                .WithSummary("L?y c?u tr�c gh? to�n ph�ng (organized by row) v?i th?ng k� Available/Locked/Booked")
+                .WithSummary("Lấy cấu trúc ghế toàn phòng (organized by row) với thống kê Available/Locked/Booked")
                 .Produces<SeatMapDto>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapGet("/seat-count/{showingId:guid}", GetSeatCountAsync)
+                .WithName("GetSeatCount")
+                .WithSummary("Lấy số lượng ghế theo trạng thái (Available/Locked/Booked) của suất chiếu")
+                .Produces<GetSeatCount.SeatCountDto>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
             //  COMMAND 
             group.MapPost("/", CreateShowingSeatsAsync)
                 .WithName("CreateShowingSeats")
-                .WithSummary("T?o h�ng lo?t ShowingSeats cho su?t chi?u (t? ??ng t?o to�n b? gh? ph�ng, c� th? lock m?t s? h�ng)")
+                .WithSummary("Tạo hàng loạt ShowingSeats cho suất chiếu (tự động tạo toàn bộ ghế phòng, có thể lock một số hàng)")
                 .Produces<CreateShowingSeatsResult>(StatusCodes.Status201Created)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
             group.MapPut("/lock-rows", LockSeatsAsync)
                 .WithName("LockSeats")
-                .WithSummary("Lock m?t ho?c nhi?u h�ng gh? (kh�a 10 ph�t, ch? Available ho?c lock h?t h?n)")
+                .WithSummary("Lock một hoặc nhiều hàng ghế (khóa 10 phút, chỉ Available hoặc lock hết hạn)")
                 .Produces<LockSeatsResult>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
             group.MapPut("/lock-individual", LockIndividualSeatsAsync)
                 .WithName("LockIndividualSeats")
-                .WithSummary("Lock ri�ng l? t?ng gh? (x? l� c?p b?ch: h?ng, VIP, b?o tr�, v.v.)")
+                .WithSummary("Lock riêng lẻ từng ghế (xử lý cấp bộc: hạng, VIP, bảo trì, v.v.)")
                 .Produces<LockIndividualSeatsResult>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
             group.MapPut("/unlock", UnlockSeatsAsync)
                 .WithName("UnlockSeats")
-                .WithSummary("M? kh�a gh? ?ang b? lock - tr? v? Available")
+                .WithSummary("Mở khóa ghế đang bị lock - trở về Available")
                 .Produces<UnlockSeatsResult>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
             group.MapPut("/mark-broken", MarkBrokenSeatsAsync)
                 .WithName("MarkBrokenSeats")
-                .WithSummary("?�nh d?u gh? h?ng v?nh vi?n (lock v� th?i h?n, IsActive = false)")
+                .WithSummary("Đánh dấu ghế hỏng vĩnh viễn (lock và thời hạn, IsActive = false)")
                 .Produces<MarkBrokenSeatsResult>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
@@ -79,6 +85,18 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
             [FromQuery] Guid roomId)
         {
             var query = new GetSeatMap.Query(showingId, roomId);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetSeatCountAsync(
+            ISender sender,
+            [FromRoute] Guid showingId)
+        {
+            var query = new GetSeatCount.Query(showingId);
             var result = await sender.Send(query);
 
             return result.IsSuccess

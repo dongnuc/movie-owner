@@ -1,202 +1,104 @@
 namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room
 {
-    // ????????????????????????????????????????????????????????????????????????????
-    // LIST DTOs - Thông tin t?i thi?u cho danh sách (pagination)
-    // ????????????????????????????????????????????????????????????????????????????
+    public enum SeatBookingStatusEnum
+    {
+        Available = 1,
+        Booked = 2,
+        Holding = 3,
+    }
 
-    /// <summary>
-    /// DTO cho danh sách Room c?a User - ch? thông tin c? b?n
-    /// </summary>
-    public sealed record RoomListUserDto(
-        Guid    Id,
-        string  Name,
-        int     TotalSeat,
-        string? TheaterName
+    public enum SeatConfigStatusEnum
+    {
+        Active = 1,
+        Broken =2,
+        None = 3,
+    }
+
+    public sealed record SeatStatusDto
+    (
+        Guid SeatId,
+            SeatBookingStatusEnum StatusBook,
+            Guid SeatTypeId,
+            Guid? GroupId
+    );
+    // room
+    public sealed record RoomListUserDto
+    (
+        Guid Id,
+        string Name,
+        int TotalSeat
     );
 
-    /// <summary>
-    /// DTO cho danh sách Room c?a Admin - ch? thông tin c? b?n
-    /// </summary>
-    public sealed record RoomListAdminDto(
-        Guid     Id,
-        string   Name,
-        int      TotalSeat,
-        int      TotalRow,
-        int      TotalCol,
-        string?  TheaterName,
-        bool     IsActive
+    public sealed record RoomListAdminDto
+    (
+        Guid Id,
+        string Name,
+        int TotalSeat,
+        int TotalRow,
+        int TotalCol,
+        bool IsActive
     );
 
-    // ????????????????????????????????????????????????????????????????????????????
-    // DETAIL DTOs - Thông tin chi ti?t khi c?n xem/edit
-    // ????????????????????????????????????????????????????????????????????????????
+    // seat and room Detail
+    public sealed record SeatLayoutUserDto
+    (
+        Guid SeatId,
+        int RowIndex,
+        int ColIndex,
+        string RowName,
+        int SeatNumber,
+        Guid SeatTypeId,
+        string SeatTypeName,
+        decimal SeatTypeSurcharge
+        );
 
-    // ?? USER DTOs ??????????????????????????????????????????????????????????????
-
-    /// <summary>
-    /// DTO cho Room dùng cho User - không c?n DateCreate, DateUpdate, IsActive
-    /// </summary>
-    public sealed record RoomUserDto(
-        Guid    Id,
-        string  Name,
-        int     TotalSeat,
-        int     TotalRow,
-        int     TotalCol,
-        string? TheaterName
-    );
-
-    /// <summary>
-    /// Room v?i seat layout dùng cho User - ch? hi?n th? Active seats
-    /// </summary>
-    public sealed record RoomWithSeatsUserDto(
-        Guid    Id,
-        string  Name,
-        int     TotalSeat,
-        int     TotalRow,
-        int     TotalCol,
-        string? TheaterName,
-        IEnumerable<SeatRowLayoutUserDto> SeatRows
-    );
-
-    /// <summary>
-    /// Seat row layout dùng cho User
-    /// </summary>
-    public sealed record SeatRowLayoutUserDto(
-        int     RowIndex,
-        string  RowName,
+    public sealed record SeatRowLayoutUserDto
+    (
+        int RowIndex,
+        string RowName,
         IEnumerable<SeatLayoutUserDto> Seats
     );
+    public sealed record SeatRowLayoutAdminDto
+(
+    int RowIndex,
+    string RowName,
+    IEnumerable<SeatLayoutAdminDto> Seats
+);
 
-    /// <summary>
-    /// Seat layout dùng cho User - không c?n DateCreate
-    /// </summary>
-    public sealed record SeatLayoutUserDto(
-        Guid     SeatId,
-        int      RowIndex,
-        int      ColIndex,
-        string   RowName,
-        int      SeatNumber,
-        string?  SeatTypeName,
-        decimal  SeatTypeSurcharge,
-        string   Status  // Active, Broken, None
+    public sealed record SeatLayoutAdminDto
+    (
+        Guid? GroupId,
+        string Type,
+        string RowName,
+        int RowIndex,
+        int StartColIndex,
+        int DisplayNumber,
+        List<Guid> SeatIds,
+        Guid SeatTypeId,
+        string SeatTypeName,
+        SeatConfigStatusEnum StatusSeat
+        );
+
+    public sealed record RoomDetailUserDto
+    (
+        Guid RoomId,
+        IEnumerable<SeatRowLayoutUserDto> Layout,
+        IEnumerable<SeatStatusDto> StatusSeats
     );
 
-    // ?? ADMIN DTOs ????????????????????????????????????????????????????????????
-
-    /// <summary>
-    /// DTO cho Room dùng cho Admin - ??y ?? thông tin qu?n lý
-    /// </summary>
-    public sealed record RoomAdminDto(
-        Guid     Id,
-        string   Name,
-        int      TotalSeat,
-        int      TotalRow,
-        int      TotalCol,
-        Guid     TheaterId,
-        string?  TheaterName,
-        bool     IsActive,
-        DateTime DateCreate,
-        DateTime DateUpdate
-    );
-
-    /// <summary>
-    /// Room v?i seat layout dùng cho Admin - hi?n th? t?t c? seats
-    /// </summary>
-    public sealed record RoomWithSeatsAdminDto(
-        Guid     Id,
-        string   Name,
-        int      TotalSeat,
-        int      TotalRow,
-        int      TotalCol,
-        Guid     TheaterId,
-        string?  TheaterName,
-        bool     IsActive,
+    public sealed record RoomDetailAdminDto
+    (
+        Guid Id,
+        string Name,
+        int TotalSeat,
+        int TotalRow,
+        int TotalCol,
+        bool IsActive,
         DateTime DateCreate,
         DateTime DateUpdate,
-        IEnumerable<SeatRowLayoutAdminDto> SeatRows
+        IEnumerable<SeatRowLayoutAdminDto>? Layout
     );
 
-    /// <summary>
-    /// Seat row layout dùng cho Admin
-    /// </summary>
-    public sealed record SeatRowLayoutAdminDto(
-        int     RowIndex,
-        string  RowName,
-        IEnumerable<SeatLayoutAdminDto> Seats
-    );
 
-    /// <summary>
-    /// Seat layout dùng cho Admin - ??y ?? thông tin
-    /// </summary>
-    public sealed record SeatLayoutAdminDto(
-        Guid     SeatId,
-        int      RowIndex,
-        int      ColIndex,
-        string   RowName,
-        int      SeatNumber,
-        Guid     SeatTypeId,
-        string?  SeatTypeName,
-        decimal  SeatTypeSurcharge,
-        string   Status,  // Active, Broken, None
-        DateTime DateCreate
-    );
 
-    // ????????????????????????????????????????????????????????????????????????????
-    // Legacy DTOs - Dùng chung (nên migrate sang User/Admin specific)
-    // ????????????????????????????????????????????????????????????????????????????
-
-    /// <summary>
-    /// Legacy DTO cho Room - dùng chung
-    /// </summary>
-    public sealed record RoomDto(
-        Guid     Id,
-        string   Name,
-        int      TotalSeat,
-        int      TotalRow,
-        int      TotalCol,
-        Guid     TheaterId,
-        string?  TheaterName,
-        bool     IsActive,
-        DateTime DateCreate,
-        DateTime DateUpdate
-    );
-
-    /// <summary>
-    /// Legacy Room v?i seat layout
-    /// </summary>
-    public sealed record RoomWithSeatsDto(
-        Guid     Id,
-        string   Name,
-        int      TotalSeat,
-        int      TotalRow,
-        int      TotalCol,
-        Guid     TheaterId,
-        string?  TheaterName,
-        bool     IsActive,
-        IEnumerable<SeatRowLayoutDto> SeatRows
-    );
-
-    /// <summary>
-    /// Legacy Seat row layout
-    /// </summary>
-    public sealed record SeatRowLayoutDto(
-        int     RowIndex,
-        string  RowName,
-        IEnumerable<SeatLayoutDto> Seats
-    );
-
-    /// <summary>
-    /// Legacy Seat layout information
-    /// </summary>
-    public sealed record SeatLayoutDto(
-        Guid     SeatId,
-        int      RowIndex,
-        int      ColIndex,
-        string   RowName,
-        int      SeatNumber,
-        Guid     SeatTypeId,
-        string?  SeatTypeName,
-        decimal  SeatTypeSurcharge,
-        string   Status  // Active, Broken, None
-    );
 }

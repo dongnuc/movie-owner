@@ -11,6 +11,7 @@ using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.RefreshAcc
 using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Register;
 using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.ResendConfirmEmail;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login;
+using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Presentation.Abstractions;
 using System.Security.Claims;
 
@@ -124,14 +125,32 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
 
         private static async Task<IResult> LoginAsync(
             ISender sender,
+            HttpContext httpContext,
             [FromBody] LoginRequest request)
         {
             var query = new Login.Query(request.UsernameOrEmail, request.Password);
             var result = await sender.Send(query);
 
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
+            if(result.IsFailure)
+                return HandlerFailure(result);
+            var options = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/",
+                Expires = DateTime.UtcNow.AddDays(1) // Adjust as needed, should match refresh token expiration
+            };
+
+            httpContext.Response.Cookies.Delete("refreshToken", options);
+            httpContext.Response.Cookies.Append("refreshToken", result.Value.RefreshToken, options);
+
+
+            return Results.Ok(new
+            {
+                accessToken = result.Value.AccessToken,
+                accessTokenExpiresAt = result.Value.AccessTokenExpiresAt
+            });
         }
 
         private static async Task<IResult> RefreshAccessTokenAsync(
@@ -150,10 +169,12 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             if (result.IsFailure)
                 return HandlerFailure(result);
 
+            httpContext.Response.Cookies.Delete("refreshToken");
             httpContext.Response.Cookies.Append("refreshToken", result.Value.refreshTokenNew, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
+                Path = "/",
                 SameSite = SameSiteMode.None,
                 Expires = result.Value.refreshTokenExpires
             });

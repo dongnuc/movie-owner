@@ -9,6 +9,7 @@ using Movie_StructureCode.Application.Features.UseCases.Commands.Showing.UpdateS
 using Movie_StructureCode.Application.Features.UseCases.Commands.Showing.DeleteShowing;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByMovie;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByDateRange;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByMovieWithTheaterCount;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
@@ -40,6 +41,13 @@ namespace Movie_StructureCode.Presentation.APIs.Showings
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
+            group.MapGet("/movie/{movieId:guid}/theaters", GetShowingsByMovieWithTheaterCountAsync)
+                .WithName("GetShowingsByMovieWithTheaterCount")
+                .WithSummary("Lấy danh sách rạp kèm số lượng suất chiếu theo phim và ngày")
+                .Produces(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
             // ── COMMAND ──────────────────────────────────────────────────────
             group.MapPost("/", CreateShowingAsync)
                 .WithName("CreateShowing")
@@ -67,7 +75,7 @@ namespace Movie_StructureCode.Presentation.APIs.Showings
         private static async Task<IResult> GetShowingsByMovieAsync(
             ISender sender,
             [FromRoute] Guid movieId,
-            [FromQuery] Guid? theaterId = null,
+            [FromQuery] Guid theaterId,
             [FromQuery] DateTime? date = null)
         {
             var query = new GetShowingsByMovie.Query(movieId, theaterId, date);
@@ -84,6 +92,19 @@ namespace Movie_StructureCode.Presentation.APIs.Showings
             [FromQuery] DateTime date)
         {
             var query = new GetShowingsByDateRange.Query(movieId, date);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetShowingsByMovieWithTheaterCountAsync(
+            ISender sender,
+            [FromRoute] Guid movieId,
+            [FromQuery] DateTime date)
+        {
+            var query = new GetShowingsByMovieWithTheaterCount.Query(movieId, date);
             var result = await sender.Send(query);
 
             return result.IsSuccess

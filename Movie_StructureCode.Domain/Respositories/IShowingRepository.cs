@@ -29,11 +29,11 @@ namespace Movie_StructureCode.Domain.Respositories
             CancellationToken ct = default);
 
         /// <summary>
-        /// Lấy tất cả showing trong khoảng thời gian (dùng để quản lý lịch chiếu).
+        /// Lấy dánh sách rạp kèm count suất chiếu theo khoảng thời gian (dùng để xem lịch rạp).
         /// </summary>
-        Task<IEnumerable<Showing>> GetByDateRangeAsync(
-            DateTime from,
-            DateTime to,
+        Task<IEnumerable<(Theater theater, int count)>> CountShowingByMovieWithDateAsync(
+            Guid movieId,
+            DateTime date,
             CancellationToken ct = default);
 
         /// <summary>
@@ -42,5 +42,6 @@ namespace Movie_StructureCode.Domain.Respositories
         Task<IEnumerable<Showing>> GetByMovieAsync(
             Guid movieId,
             CancellationToken ct = default);
+
     }
 }

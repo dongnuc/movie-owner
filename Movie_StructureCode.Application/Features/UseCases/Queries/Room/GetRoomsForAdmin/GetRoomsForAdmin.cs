@@ -19,30 +19,17 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoom
         /// <summary>
         /// Map Entity ? Admin List DTO (compact view - ch? thông tin c? b?n)
         /// </summary>
-        public static RoomListAdminDto ToListDto(Domain.Entities.Room room) =>
-            new(
+        public static RoomListAdminDto ToListDto(Movie_StructureCode.Domain.Entities.Room room, int totalSeat)
+        {
+            return new RoomListAdminDto(
                 room.Id,
                 room.Name,
-                room.TotalSeat,
+                totalSeat,
                 room.TotalRow,
                 room.TotalCol,
-                room.Theater?.Name,
-                room.IsActive);
+                room.IsActive
+            );
+        }
 
-        /// <summary>
-        /// Map Entity ? Admin Detail DTO (full info)
-        /// </summary>
-        public static RoomAdminDto ToDtoAdmin(Domain.Entities.Room room) =>
-            new(
-                room.Id,
-                room.Name,
-                room.TotalSeat,
-                room.TotalRow,
-                room.TotalCol,
-                room.TheaterId,
-                room.Theater?.Name,
-                room.IsActive,
-                room.DateCreate,
-                room.DateUpdate);
     }
 }

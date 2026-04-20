@@ -8,11 +8,16 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Room.Update
         : ICommandHander<UpdateRoom.Command>
     {
         private readonly IRoomRepository _roomRepo;
+        private readonly ISeatRepository _seatRepo;
         private readonly IUnitOfWork _uow;
 
-        public UpdateRoomHandler(IRoomRepository roomRepo, IUnitOfWork uow)
+        public UpdateRoomHandler(
+            IRoomRepository roomRepo,
+            ISeatRepository seatRepo,
+            IUnitOfWork uow)
         {
             _roomRepo = roomRepo;
+            _seatRepo = seatRepo;
             _uow = uow;
         }
 
@@ -38,8 +43,25 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Room.Update
                     new Error("Room.DuplicateName",
                         $"Room name '{command.Name}' already exists in this theater."));
 
+            // Check if room has existing seats
+            var hasExistingSeats = await _seatRepo.AnyAsync(
+                s => s.RoomId == command.Id,
+                cancellationToken);
+
+            // If room has seats, prevent changing dimensions
+            if (hasExistingSeats)
+            {
+                if (command.TotalRow != room.TotalRow || command.TotalCol != room.TotalCol)
+                    return Result.Failure(
+                        new Error("Room.CannotChangeDimensions",
+                            $"Cannot change room dimensions because seats already exist. Current dimensions: {room.TotalRow}×{room.TotalCol}. " +
+                            $"Please delete existing seats first if you need to modify the room layout."));
+            }
+
             room.Name = command.Name;
             room.IsActive = command.IsActive;
+            room.TotalCol = command.TotalCol;
+            room.TotalRow = command.TotalRow;
             room.DateUpdate = DateTime.UtcNow;
 
             _roomRepo.Update(room);

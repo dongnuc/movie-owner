@@ -1,5 +1,6 @@
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
+using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Domain.Respositories;
 
 namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoomsForAdmin
@@ -9,12 +10,16 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoom
     {
         private readonly ITheaterRepository _theaterRepo;
         private readonly IRoomRepository _roomRepo;
+        private readonly ISeatRepository _seatRepo;
 
-        public GetRoomsForAdminHandler(ITheaterRepository theaterRepo, IRoomRepository roomRepo)
+        public GetRoomsForAdminHandler(ITheaterRepository theaterRepo, IRoomRepository roomRepo, ISeatRepository seatRepo)
         {
             _theaterRepo = theaterRepo;
             _roomRepo = roomRepo;
+            _seatRepo = seatRepo;
         }
+
+       
 
         public async Task<Result<PagedResult<RoomListAdminDto>>> Handle(
             GetRoomsForAdmin.Query request,
@@ -41,11 +46,22 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoom
 
             var filteredList = filteredItems.ToList();
 
+            var seatCounts = await _seatRepo.CountSeatUnitsByRoomIdsAsync(
+                filteredList.Select(r => r.Id).ToList(),
+                cancellationToken);
+
+            var responseItems = filteredList.Select(room =>
+            GetRoomsForAdmin.ToListDto(
+                 room,
+                 seatCounts.TryGetValue(room.Id, out var count) ? count : 0
+            )).ToList();
+
             var response = PagedResult<RoomListAdminDto>.Create(
-                filteredList.Select(GetRoomsForAdmin.ToListDto).ToList(),
+                responseItems,
                 request.PageNumber,
                 request.PageSize,
-                pagedRooms.TotalCount);
+                pagedRooms.TotalCount
+                );
 
             return Result.Success(response);
         }

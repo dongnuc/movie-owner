@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Domain.Respositories;
 using Movie_StructureCode.Persistence.Context;
@@ -12,8 +12,8 @@ namespace Movie_StructureCode.Persistence.Repositories
         // ?? USER ????????????????????????????????????????????????????????????
 
         /// <summary>
-        /// L?y danh s�ch showing active theo movieId + theaterId,
-        /// tu? ch?n l?c th�m theo ng�y c? th?.
+        /// L?y danh sách showing active theo movieId + theaterId,
+        /// tu? ch?n l?c thêm theo ngày c? th?.
         /// </summary>
         public async Task<IEnumerable<Showing>> GetShowingsActiveAsync(
             Guid movieId,
@@ -47,7 +47,7 @@ namespace Movie_StructureCode.Persistence.Repositories
         // ?? ADMIN ???????????????????????????????????????????????????????????
 
         /// <summary>
-        /// L?y to�n b? showing trong ph�ng (bao g?m c? inactive) ?? xem l?ch ph�ng.
+        /// L?y toàn b? showing trong phòng (bao g?m c? inactive) ?? xem l?ch phòng.
         /// </summary>
         public async Task<IEnumerable<Showing>> GetByRoomAsync(
             Guid roomId,
@@ -60,23 +60,43 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .ToListAsync(ct);
 
         /// <summary>
-        /// L?y to�n b? showing trong kho?ng th?i gian ?? qu?n l� l?ch chi?u.
+        /// Lấy dánh sách rạp kèm count suất chiếu theo khoảng thời gian (dùng để xem lịch rạp).
         /// </summary>
-        public async Task<IEnumerable<Showing>> GetByDateRangeAsync(
-            DateTime from,
-            DateTime to,
+        public async Task<IEnumerable<(Theater theater, int count)>> CountShowingByMovieWithDateAsync(
+            Guid movieId,
+            DateTime date,
             CancellationToken ct = default)
-            => await _context.Showings
-                .AsNoTracking()
-                .Include(s => s.Movie)
-                .Include(s => s.Room!)
-                    .ThenInclude(r => r.Theater)
-                .Where(s => s.TimeStart >= from && s.TimeStart <= to)
-                .OrderBy(s => s.TimeStart)
-                .ToListAsync(ct);
+        {
+            var from = date.Date;
+            var to = from.AddDays(1);
+
+            var result = await _context.Showings.AsNoTracking()
+                .Where(s => s.MovieId == movieId &&
+                           s.TimeStart.Date >= from &&
+                            s.TimeStart.Date < to &&
+                           s.IsActive)
+                .GroupBy(s => new
+                {
+                    TheaterId = s.Room!.TheaterId,
+                    TheaterName = s.Room.Theater!.Name,
+                    TheaterLocation = s.Room.Theater!.Location
+                })
+                .Select(g => new
+                {
+                    Theater = new Theater
+                    {
+                        Id = g.Key.TheaterId,
+                        Name = g.Key.TheaterName,
+                        Location = g.Key.TheaterLocation
+                    },
+                    Count = g.Count()
+                }).ToListAsync(ct);
+
+            return result.Select(r => (r.Theater,r.Count));
+        }
 
         /// <summary>
-        /// L?y t?t c? showing c?a movie (bao g?m c? inactive) ?? admin qu?n l�.
+        /// L?y t?t c? showing c?a movie (bao g?m c? inactive) ?? admin qu?n lý.
         /// </summary>
         public async Task<IEnumerable<Showing>> GetByMovieAsync(
             Guid movieId,

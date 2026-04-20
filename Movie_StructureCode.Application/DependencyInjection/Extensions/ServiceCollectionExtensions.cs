@@ -2,6 +2,9 @@
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Movie_StructureCode.Application.Abstractions.Services.Cache;
+using Movie_StructureCode.Application.Abstractions.Services.SeatService;
+using Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat;
 using Movie_StructureCode.Application.Behaviors;
 using Movie_StructureCode.Application.Mappers;
 namespace Movie_StructureCode.Application.DependencyInjection.Extensions
@@ -22,5 +25,12 @@ namespace Movie_StructureCode.Application.DependencyInjection.Extensions
             => services.AddAutoMapper(typeof(ServiceProfile));
         // config AutoMapper
 
+        public static IServiceCollection AddSeatServices(this IServiceCollection services)
+        {
+            services.AddScoped<ISeatValidator, SeatValidator>();
+            services.AddScoped<ISeatLayoutService, SeatLayoutService>();
+
+            return services;
+        }
     }
 }

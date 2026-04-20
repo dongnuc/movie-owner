@@ -87,6 +87,7 @@ builder.Host.UseSerilog();
 // ── APPLICATION LAYER ───────────────────────────────────────────────
 builder.Services.AddConfigureMediatR();
 builder.Services.AddConfigureAutoMapper();
+builder.Services.AddSeatServices();
 
 // ── MIDDLEWARE ───────────────────────────────────────────────────────────
 builder.Services.AddTransient<ExceptionHandlingMiddleware>();

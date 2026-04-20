@@ -34,6 +34,22 @@ namespace Movie_StructureCode.Presentation.APIs.Movies
                 .Produces<PagedResult<MovieUserDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest);
 
+            // ── QUERY (ADMIN) ──────────────────────────────────────────────────
+            // Admin routes phải đứng trước user routes để tránh conflict
+            group.MapGet("/admin/list", GetMoviesForAdminAsync)
+                .WithName("GetMoviesForAdmin")
+                .WithSummary("Admin: Lấy danh sách phim (tìm kiếm + lọc category + lọc IsActive + phân trang)")
+                .Produces<PagedResult<MovieAdminDto>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest);
+
+            group.MapGet("/admin/{id:guid}", GetMovieByIdAdminAsync)
+                .WithName("GetMovieByIdAdmin")
+                .WithSummary("Admin: Lấy chi tiết phim theo ID (đầy đủ thông tin)")
+                .Produces<MovieAdminDto>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
+            // ── USER routes ──────────────────────────────────────────────────
             group.MapGet("/{id:guid}", GetMovieByIdAsync)
                 .WithName("GetMovieById")
                 .WithSummary("Lây chi tiết phim theo ID")
@@ -45,13 +61,6 @@ namespace Movie_StructureCode.Presentation.APIs.Movies
                 .WithSummary("Lấy phim kèm danh sách suất chiếu")
                 .Produces<MovieWithShowingsUserDto>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound);
-
-            // ── QUERY (ADMIN) ──────────────────────────────────────────────────
-            group.MapGet("/admin/list", GetMoviesForAdminAsync)
-                .WithName("GetMoviesForAdmin")
-                .WithSummary("Admin: Lấy danh sách phim (tìm kiếm + lọc category + lọc IsActive + phân trang)")
-                .Produces<PagedResult<MovieAdminDto>>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status400BadRequest);
 
             // ── COMMAND ──────────────────────────────────────────────────────
             group.MapPost("/", CreateMovieAsync)
@@ -97,6 +106,18 @@ namespace Movie_StructureCode.Presentation.APIs.Movies
             [FromRoute] Guid id)
         {
             var query = new GetMovieById.Query(id);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetMovieByIdAdminAsync(
+            ISender sender,
+            [FromRoute] Guid id)
+        {
+            var query = new GetMovieById.AdminQuery(id);
             var result = await sender.Send(query);
 
             return result.IsSuccess

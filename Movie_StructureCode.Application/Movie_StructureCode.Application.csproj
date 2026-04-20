@@ -21,6 +21,7 @@
     <Folder Include="DependencyInjection\Options\" />
     <Folder Include="Features\UseCases\Commands\Room\DeleteRoom\" />
     <Folder Include="Features\UseCases\Commands\Theater\DeleteTheater\" />
+    <Folder Include="Features\UseCases\Queries\Seat\" />
   </ItemGroup>
 
 </Project>

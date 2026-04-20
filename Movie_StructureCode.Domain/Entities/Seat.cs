@@ -2,9 +2,9 @@
 {
     public enum StatusSeat
     {
-        Active,
-        Broken,
-        None
+        Active = 1,
+        Broken = 2,
+        None = 3
     }
 
     public class Seat : BaseEntities
@@ -13,7 +13,9 @@
         public int ColIndex { get; set; }
         public string RowName { get; set; }
         public int SeatNumber { get; set; }
-    
+
+        public Guid? GroupId { get; set; }
+
         public StatusSeat StatusSeat { get; set; } = StatusSeat.Broken;
 
         // foreign key

@@ -8,6 +8,7 @@ using Movie_StructureCode.Application.Features.UseCases.Commands.Category.Create
 using Movie_StructureCode.Application.Features.UseCases.Commands.Category.DeleteCategory;
 using Movie_StructureCode.Application.Features.UseCases.Commands.Category.UpdateCategory;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Category.GetCategory;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Category.GetCategoryById;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Category.GetCategoriesForAdmin;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Category;
 using Movie_StructureCode.Contract.Abstractions.Shared;
@@ -31,6 +32,14 @@ namespace Movie_StructureCode.Presentation.APIs.Categories
                 .WithSummary("Lấy danh sách category có phân trang")
                 .Produces<PagedResult<CategoryUserDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest);
+
+            // ── GET CATEGORY BY ID (ADMIN) ──────────────────────────────────────
+            group.MapGet("/{id:guid}", GetCategoryByIdAsync)
+                .WithName("GetCategoryById")
+                .WithSummary("Admin: Lấy chi tiết category theo ID (đầy đủ thông tin)")
+                .Produces<CategoryAdminDto>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound);
 
             // ── QUERY (ADMIN) ──────────────────────────────────────────────────
             group.MapGet("/admin/list", GetCategoriesForAdminAsync)
@@ -70,6 +79,18 @@ namespace Movie_StructureCode.Presentation.APIs.Categories
             [FromQuery] int     pageSize    = 10)
         {
             var query  = new GetCategories.Query(id, pageNumber, pageSize);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetCategoryByIdAsync(
+            ISender sender,
+            [FromRoute] Guid id)
+        {
+            var query = new GetCategoryById.Query(id);
             var result = await sender.Send(query);
 
             return result.IsSuccess

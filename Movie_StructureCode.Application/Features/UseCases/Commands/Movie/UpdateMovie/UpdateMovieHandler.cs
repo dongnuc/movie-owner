@@ -1,6 +1,8 @@
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Respositories;
+using MediatR;
+using Movie_StructureCode.Application.Common;
 
 namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.UpdateMovie
 {
@@ -10,15 +12,18 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.Updat
         private readonly IMovieRepository    _movieRepo;
         private readonly ICategoryRepository _categoryRepo;
         private readonly IUnitOfWork         _uow;
+        private readonly IMediator           _mediator;
 
         public UpdateMovieHandler(
             IMovieRepository    movieRepo,
             ICategoryRepository categoryRepo,
-            IUnitOfWork         uow)
+            IUnitOfWork         uow,
+            IMediator           mediator)
         {
             _movieRepo    = movieRepo;
             _categoryRepo = categoryRepo;
             _uow          = uow;
+            _mediator     = mediator;
         }
 
         public async Task<Result> Handle(
@@ -57,6 +62,9 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.Updat
 
             _movieRepo.Update(movie);
             await _uow.SaveChangesAsync(cancellationToken);
+
+            // Publish cache invalidation event
+            await _mediator.Publish(new EntityChangedEvent("movie", command.Id), cancellationToken);
 
             return Result.Success();
         }

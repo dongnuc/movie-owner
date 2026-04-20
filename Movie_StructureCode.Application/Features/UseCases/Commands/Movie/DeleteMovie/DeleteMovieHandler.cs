@@ -1,6 +1,8 @@
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Respositories;
+using MediatR;
+using Movie_StructureCode.Application.Common;
 
 namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.DeleteMovie
 {
@@ -9,11 +11,13 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.Delet
     {
         private readonly IMovieRepository _movieRepo;
         private readonly IUnitOfWork      _uow;
+        private readonly IMediator        _mediator;
 
-        public DeleteMovieHandler(IMovieRepository movieRepo, IUnitOfWork uow)
+        public DeleteMovieHandler(IMovieRepository movieRepo, IUnitOfWork uow, IMediator mediator)
         {
             _movieRepo = movieRepo;
             _uow       = uow;
+            _mediator  = mediator;
         }
 
         public async Task<Result> Handle(
@@ -49,13 +53,16 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Movie.Delet
 
                 _movieRepo.Update(movie);
                 await _uow.SaveChangesAsync(cancellationToken);
-
-                return Result.Success();
+            }
+            else
+            {
+                // Hard delete - remove completely (no showings at all)
+                _movieRepo.Remove(movie);
+                await _uow.SaveChangesAsync(cancellationToken);
             }
 
-            // Hard delete - remove completely (no showings at all)
-            _movieRepo.Remove(movie);
-            await _uow.SaveChangesAsync(cancellationToken);
+            // Publish cache invalidation event
+            await _mediator.Publish(new EntityChangedEvent("movie", command.Id), cancellationToken);
 
             return Result.Success();
         }

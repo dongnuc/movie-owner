@@ -1,4 +1,4 @@
-﻿namespace Movie_StructureCode.Application.Common
+﻿namespace Movie_StructureCode.Application.Abstractions.Services.Cache
 {
     public interface ICacheableQuery
     {
@@ -7,5 +7,6 @@
         bool BypassCache { get; }
 
         Type ValueType { get; }
+
     }
 }

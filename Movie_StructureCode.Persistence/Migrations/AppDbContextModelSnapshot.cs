@@ -426,6 +426,9 @@ namespace Movie_StructureCode.Persistence.Migrations
                     b.Property<DateTime>("DateUpdate")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 

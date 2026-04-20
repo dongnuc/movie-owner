@@ -6,7 +6,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
     {
         public sealed record Query(
             Guid MovieId,
-            Guid? TheaterId = null,
+            Guid TheaterId,
             DateTime? Date = null
         ) : IQuery<IEnumerable<ShowingDto>>;
     }

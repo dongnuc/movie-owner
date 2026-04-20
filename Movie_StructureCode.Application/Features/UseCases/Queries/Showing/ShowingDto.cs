@@ -8,21 +8,16 @@
         Guid     Id,
         DateTime TimeStart,
         decimal  Price,
-        string?  MovieTitle,
-        string?  RoomName
+        int AvaiableSeats 
     );
 
     /// <summary>
     /// Showings summary for a specific date - Rạp chiếu + Phòng chiếu + Số suất chiếu
     /// </summary>
     public sealed record ShowingsSummaryDto(
-        Guid     TheaterId,
         string   TheaterName,
         string?  TheaterLocation,
-        Guid     RoomId,
-        string   RoomName,
-        int      ShowingCount,
-        IEnumerable<ShowingTimeDto> Showings
+        int      ShowingCount
     );
 
     /// <summary>

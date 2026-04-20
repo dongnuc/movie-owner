@@ -7,6 +7,8 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Room.Update
         public sealed record Command(
             Guid    Id,
             string  Name,
+            int TotalRow,
+            int TotalCol,
             bool    IsActive
         ) : ICommand;
     }

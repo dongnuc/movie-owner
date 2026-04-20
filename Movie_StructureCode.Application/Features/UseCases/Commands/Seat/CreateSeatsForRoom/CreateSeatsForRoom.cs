@@ -7,17 +7,11 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Seat.Create
         public sealed record Command(
             Guid    RoomId,
             int     TotalRow,
-            int     TotalCol,
-            /// <summary>
-            /// Default SeatTypeId for all seats (optional).
-            /// If not provided, seats will have empty SeatTypeId.
-            /// </summary>
-            Guid?   DefaultSeatTypeId = null
+            int     TotalCol
         ) : ICommand<CreateSeatsForRoomResult>;
     }
 
     public sealed record CreateSeatsForRoomResult(
-        int TotalCreated,
-        IEnumerable<Guid> CreatedSeatIds
+        int TotalCreated
     );
 }

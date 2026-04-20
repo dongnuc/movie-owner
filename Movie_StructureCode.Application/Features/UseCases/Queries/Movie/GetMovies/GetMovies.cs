@@ -1,4 +1,4 @@
-using Movie_StructureCode.Application.Common;
+using Movie_StructureCode.Application.Abstractions.Services.Cache;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 
@@ -23,7 +23,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMov
                 {
                     var categoryPart = CategoryId?.ToString() ?? "all";
 
-                    return $"MovieApp:movies:category:{categoryPart}:page:{PageNumber}:size:{PageSize}";
+                    return $"movie:user:category:{categoryPart}:page:{PageNumber}:size:{PageSize}";
                 }
             }
             public Type ValueType => typeof(PagedResult<MovieUserDto>);

@@ -67,27 +67,6 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Room.Create
             await _roomRepo.AddAsync(room, cancellationToken);
             await _uow.SaveChangesAsync(cancellationToken);
 
-            // Create seats using CreateSeatsForRoom usecase
-            var createSeatsCommand = new CreateSeatsForRoom.Command(
-                room.Id,
-                command.TotalRow,
-                command.TotalCol,
-                DefaultSeatTypeId: null);
-
-            var createSeatsResult = await _sender.Send(createSeatsCommand, cancellationToken);
-
-            if (!createSeatsResult.IsSuccess)
-            {
-                // Rollback: Mark room as inactive if seat creation fails
-                room.IsActive = false;
-                _roomRepo.Update(room);
-                await _uow.SaveChangesAsync(cancellationToken);
-
-                return Result.Failure<Guid>(
-                    new Error("Seats.CreationFailed",
-                        $"Failed to create seats for room '{room.Id}'."));
-            }
-
             return Result.Success(room.Id);
         }
     }

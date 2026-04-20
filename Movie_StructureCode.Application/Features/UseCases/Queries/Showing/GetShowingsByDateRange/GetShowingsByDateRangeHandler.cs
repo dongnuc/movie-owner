@@ -20,16 +20,10 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
             GetShowingsByDateRange.Query query,
             CancellationToken cancellationToken)
         {
-            // Verify movie exists
-            var movie = await _movieRepo.GetByIdAsync(query.MovieId, cancellationToken);
-            if (movie is null)
-                return Result.Failure<IEnumerable<ShowingsSummaryDto>>(
-                    new Error("Movie.NotFound", $"Movie '{query.MovieId}' not found."));
-
+            
             // Get all showings for this movie
             var allShowings = await _showingRepo.GetByMovieAsync(query.MovieId, cancellationToken);
 
-            // Filter by the specified date (from 00:00 to 23:59:59)
             var dateStart = query.Date.Date;
             var dateEnd = dateStart.AddDays(1);
 
@@ -44,20 +38,11 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
                     theaterGroup
                         .GroupBy(s => new { s.RoomId, s.Room?.Name })
                         .Select(roomGroup => new ShowingsSummaryDto(
-                            theaterGroup.Key.TheaterId ?? Guid.Empty,
                             theaterGroup.Key.Name ?? "Unknown",
                             theaterGroup.Key.Location,
-                            roomGroup.Key.RoomId,
-                            roomGroup.Key.Name ?? "Unknown",
-                            roomGroup.Count(),
-                            roomGroup
-                                .Select(s => new ShowingTimeDto(
-                                    s.Id,
-                                    s.TimeStart,
-                                    s.Price))
-                                .OrderBy(dto => dto.TimeStart)
-                                .ToList())))
-                .ToList();
+                            roomGroup.Count()
+                        ))
+                .ToList());
 
             return Result.Success(summary.AsEnumerable());
         }

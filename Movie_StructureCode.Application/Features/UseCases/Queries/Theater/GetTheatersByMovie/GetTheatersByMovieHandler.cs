@@ -15,6 +15,13 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Theater.GetT
             GetTheatersByMovie.Query query,
             CancellationToken        cancellationToken)
         {
+            if (query.Date < DateTime.UtcNow)
+            {
+                return Result.Failure<IEnumerable<TheaterDto>>(
+                    new Error("InvalidDate", "Date must be in the future."));
+
+            }
+
             var theaters = await _repo.GetTheatersByMovieAsync(
                 query.MovieId,
                 query.Date,

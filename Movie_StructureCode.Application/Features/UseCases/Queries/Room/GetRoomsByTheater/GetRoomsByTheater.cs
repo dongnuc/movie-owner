@@ -22,51 +22,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoom
             new(
                 room.Id,
                 room.Name,
-                room.TotalSeat,
-                room.Theater?.Name);
+                room.TotalSeat);
 
-        /// <summary>
-        /// Map Entity ? User Detail DTO (full info)
-        /// </summary>
-        public static RoomUserDto ToDtoUser(Domain.Entities.Room room) =>
-            new(
-                room.Id,
-                room.Name,
-                room.TotalSeat,
-                room.TotalRow,
-                room.TotalCol,
-                room.Theater?.Name);
-
-        /// <summary>
-        /// Map Entity ? Admin Detail DTO
-        /// </summary>
-        public static RoomAdminDto ToDtoAdmin(Domain.Entities.Room room) =>
-            new(
-                room.Id,
-                room.Name,
-                room.TotalSeat,
-                room.TotalRow,
-                room.TotalCol,
-                room.TheaterId,
-                room.Theater?.Name,
-                room.IsActive,
-                room.DateCreate,
-                room.DateUpdate);
-
-        /// <summary>
-        /// Legacy mapper - deprecated
-        /// </summary>
-        public static RoomDto ToDto(Domain.Entities.Room room) =>
-            new(
-                room.Id,
-                room.Name,
-                room.TotalSeat,
-                room.TotalRow,
-                room.TotalCol,
-                room.TheaterId,
-                room.Theater?.Name,
-                room.IsActive,
-                room.DateCreate,
-                room.DateUpdate);
     }
 }

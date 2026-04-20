@@ -25,6 +25,35 @@ namespace Movie_StructureCode.Infracstructure.Caching
             return JsonSerializer.Deserialize<T>(value!);
         }
 
+        public async Task<string> GetEntityVersionAsync(string entity, Guid id)
+        {
+            var value = await _redis.StringGetAsync($"tag:{entity}:{id}");
+            return value.IsNullOrEmpty ? "0" : value!;
+        }
+
+        public async Task<string> GetTagVersionAsync(string tag)
+        {
+            var value = await _redis.StringGetAsync($"tag:{tag}");
+            return value.IsNullOrEmpty ? "0" : value!;
+        }
+
+        public Task<long> InCrementEntityVersionAsync(string entity, Guid id)
+        {
+            return _redis.StringIncrementAsync($"tag:{entity}:{id}");
+        }
+
+        public async Task<long> InCrementTagVersionAsync(string tag)
+        {
+            //return await _redis.StringIncrementAsync($"tag:{tag}");
+            var before = await _redis.StringGetAsync($"tag:{tag}");
+            Console.WriteLine($"Before: {before}");
+
+            var after = await _redis.StringIncrementAsync($"tag:{tag}");
+            Console.WriteLine($"After: {after}");
+            
+            return after;
+        }
+
         public async Task RemoveAsync(string key)
         {
             await _redis.KeyDeleteAsync(key);
