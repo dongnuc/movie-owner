@@ -5,14 +5,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.CreateShowingSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.LockIndividualSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.LockSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.MarkBrokenSeats;
-using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.UnlockSeats;
+using Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.SyncUserSeats;
 using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat;
 using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSeatCount;
 using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSeatMap;
+using Movie_StructureCode.Application.Features.UseCases.Queries.ShowingSeat.GetSessionRemainingSeconds;
+using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
+using System.Security.Claims;
+using static Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat.SyncUserSeats.SyncUserSeatsRequest;
 
 namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
 {
@@ -40,39 +41,28 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
                 .Produces<GetSeatCount.SeatCountDto>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
-            //  COMMAND 
+            group.MapGet("/session-remaining-seconds/{showingId:guid}", GetSessionRemainingSecondsAsync)
+                .WithName("GetSessionRemainingSeconds")
+                .WithSummary("Lấy số giây còn lại của phiên session holding (dùng cho countdown timer) - userId từ access token")
+                .Produces<GetSessionRemainingSeconds.SessionRemainingSecondsDto>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status404NotFound)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .RequireAuthorization();
+
+            //  COMMAND - USER SEAT SYNC (with access token extraction)
+            group.MapPost("/sync", SyncUserSeatsAsync)
+                .WithName("SyncUserSeats")
+                .WithSummary("Đồng bộ ghế cho user (so sánh trước/sau, lock ghế mới, unlock ghế bỏ - userId từ access token)")
+                .Produces<SyncUserSeatsResult>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .RequireAuthorization();
+
+            //  COMMAND - ADMIN LOCK / UNLOCK
             group.MapPost("/", CreateShowingSeatsAsync)
                 .WithName("CreateShowingSeats")
                 .WithSummary("Tạo hàng loạt ShowingSeats cho suất chiếu (tự động tạo toàn bộ ghế phòng, có thể lock một số hàng)")
                 .Produces<CreateShowingSeatsResult>(StatusCodes.Status201Created)
-                .ProducesProblem(StatusCodes.Status400BadRequest)
-                .ProducesProblem(StatusCodes.Status404NotFound);
-
-            group.MapPut("/lock-rows", LockSeatsAsync)
-                .WithName("LockSeats")
-                .WithSummary("Lock một hoặc nhiều hàng ghế (khóa 10 phút, chỉ Available hoặc lock hết hạn)")
-                .Produces<LockSeatsResult>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status400BadRequest)
-                .ProducesProblem(StatusCodes.Status404NotFound);
-
-            group.MapPut("/lock-individual", LockIndividualSeatsAsync)
-                .WithName("LockIndividualSeats")
-                .WithSummary("Lock riêng lẻ từng ghế (xử lý cấp bộc: hạng, VIP, bảo trì, v.v.)")
-                .Produces<LockIndividualSeatsResult>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status400BadRequest)
-                .ProducesProblem(StatusCodes.Status404NotFound);
-
-            group.MapPut("/unlock", UnlockSeatsAsync)
-                .WithName("UnlockSeats")
-                .WithSummary("Mở khóa ghế đang bị lock - trở về Available")
-                .Produces<UnlockSeatsResult>(StatusCodes.Status200OK)
-                .ProducesProblem(StatusCodes.Status400BadRequest)
-                .ProducesProblem(StatusCodes.Status404NotFound);
-
-            group.MapPut("/mark-broken", MarkBrokenSeatsAsync)
-                .WithName("MarkBrokenSeats")
-                .WithSummary("Đánh dấu ghế hỏng vĩnh viễn (lock và thời hạn, IsActive = false)")
-                .Produces<MarkBrokenSeatsResult>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
         }
@@ -104,6 +94,99 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
                 : HandlerFailure(result);
         }
 
+        /// <summary>
+        /// Get session remaining seconds - extracts userId from access token via HttpContext
+        /// Returns remaining seconds for countdown timer functionality
+        /// </summary>
+        private static async Task<IResult> GetSessionRemainingSecondsAsync(
+            ISender sender,
+            [FromRoute] Guid showingId,
+            HttpContext httpContext)
+        {
+            try
+            {
+                // STEP 1: Extract userId from access token
+                var user = httpContext.User;
+                if (user == null || !user.Identity?.IsAuthenticated == true)
+                    return Results.Unauthorized();
+
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? user.FindFirst("sub")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                    return Results.Unauthorized();
+
+                // STEP 2: Validate request
+                if (showingId == Guid.Empty)
+                {
+                    var error = Result.Failure(new Error("Showing.Invalid", "ShowingId is required."));
+                    return HandlerFailure(error);
+                }
+
+                // STEP 3: Create query
+                var query = new GetSessionRemainingSeconds.Query(showingId, userId);
+
+                // STEP 4: Execute handler
+                var result = await sender.Send(query);
+
+                return result.IsSuccess
+                    ? Results.Ok(result.Value)
+                    : HandlerFailure(result);
+            }
+            catch (Exception ex)
+            {
+                var error = Result.Failure(new Error("Session.Error", $"Error getting session remaining seconds: {ex.Message}"));
+                return HandlerFailure(error);
+            }
+        }
+
+        /// <summary>
+        /// Sync user seats - extracts userId from access token via HttpContext
+        /// Handles differential logic: lock new seats, unlock deselected seats
+        /// </summary>
+        private static async Task<IResult> SyncUserSeatsAsync(
+            ISender sender,
+            [FromBody] SyncUserSeatsRequest request,
+            HttpContext httpContext)
+        {
+            try
+            {
+                // STEP 1: Extract userId from access token
+                // Try multiple sources for userId
+                var user = httpContext.User;
+                if (user == null || !user.Identity?.IsAuthenticated == true)
+                    return Results.Unauthorized();
+
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? user.FindFirst("sub")?.Value;
+
+                // STEP 2: Validate request
+                if (request.ShowingId == Guid.Empty)
+                {
+                    var error = Result.Failure(new Error("Showing.Invalid", "ShowingId is required."));
+                    return HandlerFailure(error);
+                }
+
+                // STEP 3: Create command with userId from token
+                var command = new Command(
+                    request.ShowingId,
+                    userId,
+                    request.SelectedSeatIds ?? new List<Guid>());
+
+                // STEP 4: Execute handler
+                var result = await sender.Send(command);
+
+                return result.IsSuccess
+                    ? Results.Ok(result.Value)
+                    : HandlerFailure(result);
+            }
+            catch (Exception ex)
+            {
+                var error = Result.Failure(new Error("Sync.Error", $"Error syncing seats: {ex.Message}"));
+                return HandlerFailure(error);
+            }
+        }
+
         private static async Task<IResult> CreateShowingSeatsAsync(
             ISender sender,
             [FromBody] CreateShowingSeatsRequest request)
@@ -120,72 +203,6 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
                 ? Results.Created($"/api/v1/showing-seats", result.Value)
                 : HandlerFailure(result);
         }
-
-        private static async Task<IResult> LockSeatsAsync(
-            ISender sender,
-            [FromBody] LockSeatsRequest request)
-        {
-            var command = new LockSeats.Command(
-                request.ShowingId,
-                request.RoomId,
-                request.RowIndices);
-
-            var result = await sender.Send(command);
-
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
-        }
-
-        private static async Task<IResult> LockIndividualSeatsAsync(
-            ISender sender,
-            [FromBody] LockIndividualSeatsRequest request)
-        {
-            var command = new LockIndividualSeats.Command(
-                request.ShowingId,
-                request.RoomId,
-                request.SeatIds,
-                request.Reason);
-
-            var result = await sender.Send(command);
-
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
-        }
-
-        private static async Task<IResult> UnlockSeatsAsync(
-            ISender sender,
-            [FromBody] UnlockSeatsRequest request)
-        {
-            var command = new UnlockSeats.Command(
-                request.ShowingId,
-                request.RoomId,
-                request.SeatIds);
-
-            var result = await sender.Send(command);
-
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
-        }
-
-        private static async Task<IResult> MarkBrokenSeatsAsync(
-            ISender sender,
-            [FromBody] MarkBrokenSeatsRequest request)
-        {
-            var command = new MarkBrokenSeats.Command(
-                request.ShowingId,
-                request.RoomId,
-                request.SeatIds,
-                request.Reason);
-
-            var result = await sender.Send(command);
-
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : HandlerFailure(result);
-        }
     }
 
     //  Request models 
@@ -196,25 +213,7 @@ namespace Movie_StructureCode.Presentation.APIs.ShowingSeats
         decimal Price,
         IEnumerable<int>? LockedRowIndices = null);
 
-    public sealed record LockSeatsRequest(
+    public sealed record SyncUserSeatsRequest(
         Guid ShowingId,
-        Guid RoomId,
-        IEnumerable<int> RowIndices);
-
-    public sealed record LockIndividualSeatsRequest(
-        Guid ShowingId,
-        Guid RoomId,
-        IEnumerable<Guid> SeatIds,
-        string? Reason = null);
-
-    public sealed record UnlockSeatsRequest(
-        Guid ShowingId,
-        Guid RoomId,
-        IEnumerable<Guid> SeatIds);
-
-    public sealed record MarkBrokenSeatsRequest(
-        Guid ShowingId,
-        Guid RoomId,
-        IEnumerable<Guid> SeatIds,
-        string? Reason = null);
+        IEnumerable<Guid> SelectedSeatIds);
 }

@@ -10,6 +10,7 @@ using Movie_StructureCode.Application.Features.UseCases.Commands.Showing.DeleteS
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByMovie;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByDateRange;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsByMovieWithTheaterCount;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetShowingsForAdmin;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Showing;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
@@ -45,6 +46,13 @@ namespace Movie_StructureCode.Presentation.APIs.Showings
                 .WithName("GetShowingsByMovieWithTheaterCount")
                 .WithSummary("Lấy danh sách rạp kèm số lượng suất chiếu theo phim và ngày")
                 .Produces(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapGet("/admin/list/{theaterId:guid}", GetShowingsForAdminAsync)
+                .WithName("GetShowingsForAdmin")
+                .WithSummary("Admin: Lấy danh sách suất chiếu theo rạp (search title + lọc ngày + lọc active + phân trang)")
+                .Produces<PagedResult<ShowingAdminDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -105,6 +113,33 @@ namespace Movie_StructureCode.Presentation.APIs.Showings
             [FromQuery] DateTime date)
         {
             var query = new GetShowingsByMovieWithTheaterCount.Query(movieId, date);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        /// <summary>
+        /// Admin: Lấy danh sách suất chiếu với tất cả thông tin chi tiết theo rạp
+        /// Hỗ trợ tìm kiếm theo title phim, lọc theo ngày, lọc theo trạng thái active, và phân trang
+        /// </summary>
+        private static async Task<IResult> GetShowingsForAdminAsync(
+            ISender sender,
+            [FromRoute] Guid theaterId,
+            [FromQuery] string? movieTitle = null,
+            [FromQuery] DateTime? timeStart = null,
+            [FromQuery] bool? isActive = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (theaterId == Guid.Empty)
+            {
+                var error = Result.Failure(new Error("Theater.Invalid", "TheaterId is required."));
+                return HandlerFailure(error);
+            }
+
+            var query = new GetShowingsForAdmin.Query(theaterId, movieTitle, timeStart, isActive, pageNumber, pageSize);
             var result = await sender.Send(query);
 
             return result.IsSuccess

@@ -1,4 +1,5 @@
-﻿using Movie_StructureCode.Domain.Entities;
+﻿using Movie_StructureCode.Contract.Abstractions.Shared;
+using Movie_StructureCode.Domain.Entities;
 
 namespace Movie_StructureCode.Domain.Respositories
 {
@@ -43,5 +44,17 @@ namespace Movie_StructureCode.Domain.Respositories
             Guid movieId,
             CancellationToken ct = default);
 
+        /// <summary>
+        /// Lấy danh sách showing cho admin theo rạp (theater)
+        /// Hỗ trợ tìm kiếm theo title phim, lọc theo ngày bắt đầu, lọc theo trạng thái active, và phân trang
+        /// </summary>
+        Task<PagedResult<Showing>> GetShowingsForAdminByTheaterAsync(
+            Guid theaterId,
+            string? movieTitle = null,
+            DateTime? timeStart = null,
+            bool? isActive = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            CancellationToken ct = default);
     }
 }

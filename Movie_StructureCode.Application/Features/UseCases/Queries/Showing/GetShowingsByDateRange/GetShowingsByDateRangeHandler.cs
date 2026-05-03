@@ -38,6 +38,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
                     theaterGroup
                         .GroupBy(s => new { s.RoomId, s.Room?.Name })
                         .Select(roomGroup => new ShowingsSummaryDto(
+                            theaterGroup.Key.TheaterId ?? Guid.Empty,
                             theaterGroup.Key.Name ?? "Unknown",
                             theaterGroup.Key.Location,
                             roomGroup.Count()

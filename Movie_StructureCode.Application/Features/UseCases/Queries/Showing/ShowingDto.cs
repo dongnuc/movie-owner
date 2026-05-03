@@ -15,6 +15,7 @@
     /// Showings summary for a specific date - Rạp chiếu + Phòng chiếu + Số suất chiếu
     /// </summary>
     public sealed record ShowingsSummaryDto(
+        Guid     TheaterId,
         string   TheaterName,
         string?  TheaterLocation,
         int      ShowingCount

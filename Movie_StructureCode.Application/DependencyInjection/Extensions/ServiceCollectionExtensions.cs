@@ -29,6 +29,7 @@ namespace Movie_StructureCode.Application.DependencyInjection.Extensions
         {
             services.AddScoped<ISeatValidator, SeatValidator>();
             services.AddScoped<ISeatLayoutService, SeatLayoutService>();
+            services.AddScoped<ISeatLockService, SeatLockService>();
 
             return services;
         }

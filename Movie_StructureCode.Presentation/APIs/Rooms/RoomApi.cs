@@ -8,10 +8,11 @@ using Movie_StructureCode.Application.Features.UseCases.Commands.Room.CreateRoom
 using Movie_StructureCode.Application.Features.UseCases.Commands.Room.UpdateRoom;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Room;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoomsByTheater;
-using Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoomWithSeats;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoomsForAdmin;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Room.GetRoomWithSeats;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
+using System.Security.Claims;
 
 namespace Movie_StructureCode.Presentation.APIs.Rooms
 {
@@ -32,6 +33,14 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
                 .Produces<PagedResult<RoomListUserDto>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapGet("/{showingId:guid}/layout", GetRoomWithSeatsUserAsync)
+                .WithName("GetRoomWithSeatsUser")
+                .WithSummary("User: Lấy chi tiết phòng kèm cấu trúc ghế (chỉ ghế có StatusSeat = Active)")
+                .Produces<RoomDetailUserDto>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound)
+                .RequireAuthorization();
 
             // ── QUERY (ADMIN) - MUST come before user routes ──────────────────────────────────────────────────
             group.MapGet("/admin/{theaterId:guid}/{roomId:guid}/with-seats", GetRoomWithSeatsAdminAsync)
@@ -75,6 +84,22 @@ namespace Movie_StructureCode.Presentation.APIs.Rooms
             [FromQuery] int pageSize = 10)
         {
             var query = new GetRoomsByTheater.Query(theaterId, search, pageNumber, pageSize);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetRoomWithSeatsUserAsync(
+            ISender sender,
+            HttpContext httpContext,
+            [FromRoute] Guid showingId)
+        {
+            var user = httpContext.User;
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var query = new GetRoomWithSeatsUser.Query(showingId, userId);
             var result = await sender.Send(query);
 
             return result.IsSuccess

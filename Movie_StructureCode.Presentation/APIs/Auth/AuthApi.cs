@@ -208,9 +208,18 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
            );
             var result = await sender.Send(command);
 
-            return result.IsSuccess
-                ? Results.NoContent()
-                : HandlerFailure(result);
+            if (!result.IsSuccess)
+                return HandlerFailure(result);
+
+            httpContext.Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/"
+            });
+
+            return Results.NoContent();
         }
     }
 
@@ -238,15 +247,6 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
         string UsernameOrEmail,
         string Password);
 
-    /// <summary>
-    /// Refresh token request - cấp access token mới
-    /// </summary>
-    public sealed record RefreshTokenRequest(
-        string RefreshToken);
+   
 
-    /// <summary>
-    /// Logout request - đăng xuất
-    /// Note: Access token được lấy từ Authorization header, không cần pass trong body
-    /// </summary>
-    public sealed record LogoutRequest;
 }

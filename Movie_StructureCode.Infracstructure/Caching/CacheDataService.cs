@@ -1,8 +1,6 @@
 ﻿using Movie_StructureCode.Application.Abstractions.Services.Cache;
 using StackExchange.Redis;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 
 namespace Movie_StructureCode.Infracstructure.Caching
 {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Domain.Respositories;
 using Movie_StructureCode.Persistence.Context;
@@ -108,5 +109,110 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Where(s => s.MovieId == movieId)
                 .OrderByDescending(s => s.TimeStart)
                 .ToListAsync(ct);
+
+        /// <summary>
+        /// Lấy danh sách showing cho admin
+        /// Hỗ trợ tìm kiếm theo title phim, lọc theo trạng thái active, và phân trang
+        /// </summary>
+        public async Task<PagedResult<Showing>> GetShowingsForAdminAsync(
+            string? movieTitle = null,
+            bool? isActive = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            var query = _context.Showings
+                .AsNoTracking()
+                .Include(s => s.Movie)
+                .Include(s => s.Room!)
+                    .ThenInclude(r => r.Theater)
+                .AsQueryable();
+
+            // Filter theo movie title
+            if (!string.IsNullOrWhiteSpace(movieTitle))
+            {
+                query = query.Where(s => s.Movie!.Title.Contains(movieTitle));
+            }
+
+            // Filter theo trạng thái active
+            if (isActive.HasValue)
+            {
+                query = query.Where(s => s.IsActive == isActive.Value);
+            }
+
+            // Lấy tổng số record trước khi phân trang
+            var totalCount = await query.CountAsync(ct);
+
+            // Phân trang
+            var showings = await query
+                .OrderByDescending(s => s.TimeStart)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedResult<Showing>(
+                showings,
+                totalCount,
+                pageNumber,
+                pageSize);
+        }
+
+        /// <summary>
+        /// Lấy danh sách showing cho admin theo rạp (theater)
+        /// Hỗ trợ tìm kiếm theo title phim, lọc theo ngày bắt đầu, lọc theo trạng thái active, và phân trang
+        /// </summary>
+        public async Task<PagedResult<Showing>> GetShowingsForAdminByTheaterAsync(
+            Guid theaterId,
+            string? movieTitle = null,
+            DateTime? timeStart = null,
+            bool? isActive = null,
+            int pageNumber = 1,
+            int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            var query = _context.Showings
+                .AsNoTracking()
+                .Include(s => s.Movie)
+                .Include(s => s.Room!)
+                    .ThenInclude(r => r.Theater)
+                .Where(s => s.Room!.TheaterId == theaterId)
+                .AsQueryable();
+
+            // Filter theo movie title (search)
+            if (!string.IsNullOrWhiteSpace(movieTitle))
+            {
+                query = query.Where(s => s.Movie!.Title.Contains(movieTitle));
+            }
+
+            // Filter theo ngày bắt đầu (TimeStart)
+            if (timeStart.HasValue)
+            {
+                var from = timeStart.Value.Date;
+                var to = from.AddDays(1);
+                query = query.Where(s => s.TimeStart >= from && s.TimeStart < to);
+            }
+
+            // Filter theo trạng thái active
+            if (isActive.HasValue)
+            {
+                query = query.Where(s => s.IsActive == isActive.Value);
+            }
+
+            // Lấy tổng số record trước khi phân trang
+            var totalCount = await query.CountAsync(ct);
+
+            // Phân trang
+            var showings = await query
+                .OrderByDescending(s => s.TimeStart)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedResult<Showing>(
+                showings,
+                totalCount,
+                pageNumber,
+                pageSize);
+        }
     }
 }

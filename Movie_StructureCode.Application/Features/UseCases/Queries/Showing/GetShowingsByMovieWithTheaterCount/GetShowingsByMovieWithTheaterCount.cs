@@ -17,13 +17,14 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
                 $"showings:movie:theaters:{MovieId}:date:{Date:yyyy-MM-dd}";
 
             public Type ValueType => typeof(IEnumerable<TheaterWithShowingCountDto>);
-            public TimeSpan? Expiration => TimeSpan.FromHours(2);
+            public TimeSpan? Expiration => TimeSpan.FromMinutes(10);
         }
 
         /// <summary>
         /// DTO for theater with showing count - includes only Name, Location, and count
         /// </summary>
         public sealed record TheaterWithShowingCountDto(
+            Guid TheaterId,
             string  TheaterName,
             string? TheaterLocation,
             int     ShowingCount

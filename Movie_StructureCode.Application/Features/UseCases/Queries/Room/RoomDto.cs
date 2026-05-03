@@ -14,11 +14,10 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room
         None = 3,
     }
 
+
     public sealed record SeatStatusDto
     (
-        Guid SeatId,
             SeatBookingStatusEnum StatusBook,
-            Guid SeatTypeId,
             Guid? GroupId
     );
     // room
@@ -42,14 +41,15 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Room
     // seat and room Detail
     public sealed record SeatLayoutUserDto
     (
-        Guid SeatId,
         int RowIndex,
         int ColIndex,
         string RowName,
         int SeatNumber,
         Guid SeatTypeId,
         string SeatTypeName,
-        decimal SeatTypeSurcharge
+        SeatBookingStatusEnum StatusSeat,
+        List<Guid> SeatIds,
+        bool IsMine
         );
 
     public sealed record SeatRowLayoutUserDto

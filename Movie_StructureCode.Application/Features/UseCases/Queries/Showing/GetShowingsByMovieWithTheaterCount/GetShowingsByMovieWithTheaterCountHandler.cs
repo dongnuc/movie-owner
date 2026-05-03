@@ -1,3 +1,4 @@
+using Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Respositories;
@@ -9,6 +10,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
     {
         private readonly IShowingRepository _showingRepo;
         private readonly IMovieRepository _movieRepo;
+
 
         public GetShowingsByMovieWithTheaterCountHandler(
             IShowingRepository showingRepo,
@@ -54,6 +56,7 @@ namespace Movie_StructureCode.Application.Features.UseCases.Queries.Showing.GetS
                 // Map to DTO - only include Name, Location, and ShowingCount
                 var result = theaterWithCounts
                     .Select(tc => new GetShowingsByMovieWithTheaterCount.TheaterWithShowingCountDto(
+                        TheaterId: tc.theater.Id,
                         TheaterName: tc.theater.Name,
                         TheaterLocation: tc.theater.Location,
                         ShowingCount: tc.count))
