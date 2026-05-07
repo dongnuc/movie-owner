@@ -1,7 +1,7 @@
 services:
 
   movie-api:
-    image: vietdev/movie-ticket-api:latest
+    image: vietdev/movie-ticket-api:v1
     container_name: movie-api
     ports:
       - "5000:8080"
@@ -12,7 +12,7 @@ services:
       - movie-network
 
   movie-client:
-    image: vietdev/movie-client:latest
+    image: vietdev/movie-client:v1
     container_name: movie-client
     ports:
       - "4200:80"
@@ -34,7 +34,7 @@ services:
 
     volumes:
       - movie-sql-data:/var/opt/mssql
-      - ./database-backup:/var/opt/mssql/backup
+      - ./MovieDbOwner.bak:/var/opt/mssql/backup/MovieDbOwner.bak
 
     networks:
       - movie-network
