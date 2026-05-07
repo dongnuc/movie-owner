@@ -131,8 +131,8 @@ app.MapCarter();
 
 if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging())
 {
-    app.ConfigureSwagger();
 }
+    app.ConfigureSwagger();
 
 try
 {
