@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Domain.Respositories;
@@ -213,6 +213,34 @@ namespace Movie_StructureCode.Persistence.Repositories
                 totalCount,
                 pageNumber,
                 pageSize);
+        }
+
+        // ── VALIDATION ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Kiểm tra Showing tồn tại, đang active, và chưa quá giờ chiếu.
+        /// Chỉ thực hiện một lần truy vấn DB duy nhất (single round-trip).
+        /// </summary>
+        public async Task<(bool IsValid, string? FailReason)> IsShowingValidAsync(
+            Guid showingId,
+            CancellationToken ct = default)
+        {
+            // Lấy đúng 2 field cần thiết, không kéo toàn bộ entity
+            var showing = await _context.Showings
+                .AsNoTracking()
+                .Where(s => s.Id == showingId && s.IsActive)
+                .Select(s => new { s.TimeStart })
+                .FirstOrDefaultAsync(ct);
+
+            // Không tìm thấy hoặc bị inactive
+            if (showing is null)
+                return (false, "NotFound");
+
+            // So sánh với UTC hiện tại (TimeStart lưu theo UTC)
+            if (showing.TimeStart <= DateTime.UtcNow)
+                return (false, "Expired");
+
+            return (true, null);
         }
     }
 }

@@ -52,6 +52,27 @@ namespace Movie_StructureCode.Persistence.Repositories
             return await PagedResult<Movie>.CreateAsync(query, pageNumber, pageSize);
         }
 
+        /// <summary>
+        /// Lấy danh sách phim đang chiếu tại một rạp chiếu phim (có active showings)
+        /// </summary>
+        public async Task<PagedResult<Movie>> GetMoviesByTheaterIdAsync(
+            Guid theaterId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = _context.Movies
+                .AsNoTracking()
+                .Include(m => m.Category)
+                .Where(m => m.IsActive &&
+                       m.Showings!.Any(s => s.IsActive && s.TheaterId == theaterId))
+                .Distinct()
+                .OrderBy(m => m.Title)
+                .AsQueryable();
+
+            return await PagedResult<Movie>.CreateAsync(query, pageNumber, pageSize);
+        }
+
         // ── ADMIN ───────────────────────────────────────────────────────────
 
         public async Task<PagedResult<Movie>> GetMoviesForAdminAsync(

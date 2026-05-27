@@ -33,6 +33,15 @@ namespace Movie_StructureCode.Domain.Respositories
             int pageSize,
             CancellationToken ct = default);
 
+        /// <summary>
+        /// Lấy danh sách phim đang chiếu tại một rạp chiếu phim theo TheaterId
+        /// (lấy những phim có showing active tại rạp, pagination)
+        /// </summary>
+        Task<PagedResult<Movie>> GetMoviesByTheaterIdAsync(
+            Guid theaterId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken ct = default);
 
         // ======================================
         // ADMIN METHODS

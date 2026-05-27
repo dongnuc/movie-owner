@@ -1,4 +1,5 @@
-﻿using Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat;
+using Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat;
+using Movie_StructureCode.Application.Abstractions.Services.SignalR;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Respositories;
@@ -11,11 +12,16 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat
     {
         private readonly ISeatLockService _lockService;
         private readonly IShowingRepository _showingRepo;
+        private readonly ISeatHubService _seatHubService;
 
-        public SyncUserSeatsHandler(ISeatLockService lockService, IShowingRepository showingRepo)
+        public SyncUserSeatsHandler(
+            ISeatLockService lockService,
+            IShowingRepository showingRepo,
+            ISeatHubService seatHubService)
         {
-            _lockService = lockService;
-            _showingRepo = showingRepo;
+            _lockService     = lockService;
+            _showingRepo     = showingRepo;
+            _seatHubService  = seatHubService;
         }
 
         public async Task<Result<SyncUserSeatsResult>> Handle(SyncUserSeatsRequest.Command request,
@@ -54,6 +60,9 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat
                         $"Failed to lock seats: {string.Join(", ", toAdd)}"
                     ));
                 }
+
+                // ── Broadcast SeatLocked to all clients watching this Showing ──
+                await _seatHubService.NotifySeatsLockedAsync(showingId, toAdd, userId);
             }
 
             if (toRemove.Any())
@@ -62,6 +71,11 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.ShowingSeat
                 if (!unlockResult)
                 {
                     failedSeats.Add("Failed to unlock seats: " + string.Join(", ", toRemove));
+                }
+                else
+                {
+                    // ── Broadcast SeatUnlocked to all clients watching this Showing ──
+                    await _seatHubService.NotifySeatsUnlockedAsync(showingId, toRemove);
                 }
             }
 

@@ -1,7 +1,9 @@
-﻿using Carter;
+using Carter;
 using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using Movie_StructrueCode.API.Hubs;
 using Movie_StructrueCode.API.Middleware;
 using Movie_StructureCode.API.DependencyInjection.Extensions;
 using Movie_StructureCode.Application.DependencyInjection.Extensions;
@@ -55,6 +57,26 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
     };
+
+    // ── SIGNALR: Support JWT via query string for WebSocket connections ──
+    // SignalR cannot send Authorization header via WebSocket,
+    // so the token is passed as ?access_token=<jwt> query param instead.
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // ── AUTHORIZATION ───────────────────────────────────────────────────
@@ -88,6 +110,9 @@ builder.Host.UseSerilog();
 builder.Services.AddConfigureMediatR();
 builder.Services.AddConfigureAutoMapper();
 builder.Services.AddSeatServices();
+
+// ── SIGNALR ──────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
 
 // ── MIDDLEWARE ───────────────────────────────────────────────────────────
 builder.Services.AddTransient<ExceptionHandlingMiddleware>();
@@ -128,6 +153,9 @@ app.UseMiddleware<TokenValidationMiddleware>();
 
 // ── ENDPOINTS ──────────────────────────────────────────────────────
 app.MapCarter();
+
+// ── SIGNALR HUB ROUTES ─────────────────────────────────────────────
+app.MapHub<SeatHub>("/hubs/seat");
 
 if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging())
 {

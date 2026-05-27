@@ -1,4 +1,4 @@
-﻿using Movie_StructureCode.Contract.Abstractions.Shared;
+using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
 
 namespace Movie_StructureCode.Domain.Respositories
@@ -55,6 +55,25 @@ namespace Movie_StructureCode.Domain.Respositories
             bool? isActive = null,
             int pageNumber = 1,
             int pageSize = 10,
+            CancellationToken ct = default);
+
+        // ===============================
+        // VALIDATION METHODS
+        // ===============================
+
+        /// <summary>
+        /// Kiểm tra một Showing có hợp lệ để thao tác hay không.
+        /// Hợp lệ khi: tồn tại, đang active, và chưa quá giờ chiếu so với thời điểm hiện tại.
+        /// </summary>
+        /// <param name="showingId">ID của suất chiếu cần kiểm tra.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>
+        ///   <c>(true, null)</c>              – Showing tồn tại và chưa quá giờ.<br/>
+        ///   <c>(false, "NotFound")</c>       – Không tìm thấy hoặc bị inactive.<br/>
+        ///   <c>(false, "Expired")</c>        – Showing đã quá giờ chiếu.
+        /// </returns>
+        Task<(bool IsValid, string? FailReason)> IsShowingValidAsync(
+            Guid showingId,
             CancellationToken ct = default);
     }
 }

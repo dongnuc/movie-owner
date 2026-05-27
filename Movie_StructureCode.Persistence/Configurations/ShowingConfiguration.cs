@@ -34,6 +34,9 @@ namespace Movie_StructureCode.Persistence.Configurations
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            builder.Property(x => x.TheaterId)
+                .IsRequired();
+
             builder.HasOne(x => x.Movie)
                 .WithMany(s => s.Showings)
                 .HasForeignKey(x => x.MovieId)
@@ -43,6 +46,22 @@ namespace Movie_StructureCode.Persistence.Configurations
                 .WithMany(s => s.Showings)
                 .HasForeignKey(x => x.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ?? INDEX ????????????????????????????????????????????????????????
+            // Composite index: (TheaterId, IsActive, MovieId) - t?i ?u query GetMoviesByTheaterId
+            builder.HasIndex(x => new { x.TheaterId, x.IsActive, x.MovieId })
+                .HasDatabaseName("IX_Showing_TheaterId_IsActive_MovieId")
+                .IsUnique(false);
+
+            // Single index: TheaterId - t?i ?u query l?c theo theater
+            builder.HasIndex(x => x.TheaterId)
+                .HasDatabaseName("IX_Showing_TheaterId")
+                .IsUnique(false);
+
+            // Composite index: (MovieId, TheaterId, IsActive) - t?i ?u filter movies by theater
+            builder.HasIndex(x => new { x.MovieId, x.TheaterId, x.IsActive })
+                .HasDatabaseName("IX_Showing_MovieId_TheaterId_IsActive")
+                .IsUnique(false);
         }
     }
 }

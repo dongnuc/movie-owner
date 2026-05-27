@@ -12,6 +12,7 @@ using Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMovieBy
 using Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMovies;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMovieWithShowings;
 using Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMoviesForAdmin;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Movie.GetMovieByTheaterId;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
 
@@ -32,6 +33,12 @@ namespace Movie_StructureCode.Presentation.APIs.Movies
                 .WithName("GetMovies")
                 .WithSummary("Lấy danh sách phim (tìm kiếm + lọc category + phân trang)")
                 .Produces<PagedResult<MovieUserDto>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest);
+
+            group.MapGet("/theater/{theaterId:guid}", GetMoviesByTheaterIdAsync)
+                .WithName("GetMoviesByTheaterId")
+                .WithSummary("Lấy danh sách phim đang chiếu tại một rạp (phân trang)")
+                .Produces<PagedResult<MovieListByTheaterId>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest);
 
             // ── QUERY (ADMIN) ──────────────────────────────────────────────────
@@ -94,6 +101,20 @@ namespace Movie_StructureCode.Presentation.APIs.Movies
             [FromQuery] int pageSize = 10)
         {
             var query = new GetMovies.Query(categoryId, search, pageNumber, pageSize);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetMoviesByTheaterIdAsync(
+            ISender sender,
+            [FromRoute] Guid theaterId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var query = new GetMovieByTheaterId.Query(theaterId, pageNumber, pageSize);
             var result = await sender.Send(query);
 
             return result.IsSuccess
